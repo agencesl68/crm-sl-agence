@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+/* ── 1. Primitives : identité de slagence.fr ─────────────────────────────── */
+@theme {
+  --font-sans: "Geist", "Helvetica Neue", Arial, sans-serif;
+
+  --color-noir: #070907;
+  --color-vert: #3c4f3b;
+  --color-vert-fonce: #2c3b2b;
+  --color-sauge: #a9c49f;
+  --color-pale: #dfe8d8;
+  --color-corail: #f0a58a;
+
+  /* Neutres teintés de vert : remplacent l'échelle « slate » dans toute l'application */
+  --color-slate-50: #f6f8f3;
+  --color-slate-100: #edf1e8;
+  --color-slate-200: #dfe8d8;
+  --color-slate-300: #c6d1be;
+  --color-slate-400: #97a58f;
+  --color-slate-500: #66735f;
+  --color-slate-600: #4c5847;
+  --color-slate-700: #364232;
+  --color-slate-800: #1f291d;
+  --color-slate-900: #0f140e;
+  --color-slate-950: #070907;
+
+  /* Positif = vert de la marque ; alerte = corail de la marque */
+  --color-emerald-50: #edf3ea;
+  --color-emerald-500: #7fa672;
+  --color-emerald-700: #3c4f3b;
+  --color-emerald-800: #2c3b2b;
+  --color-rose-50: #fcf0eb;
+  --color-rose-100: #f8ded4;
+  --color-rose-200: #f2c3b2;
+  --color-rose-300: #f0a58a;
+  --color-rose-600: #b85a3c;
+  --color-rose-700: #9c452b;
+}
+
+/* ── 2. Sémantique : dépend du support (verre sombre par défaut, carte claire dans .surface) ── */
+@theme inline {
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-hover: var(--hover);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-link: var(--link);
+  --color-ring-surface: var(--ring-surface);
+  --color-btn: var(--btn);
+  --color-btn-border: var(--btn-border);
+}
+
+:root {
+  --fg: #fff;
+  --fg-muted: rgb(255 255 255 / 0.66);
+  --hover: rgb(255 255 255 / 0.10);
+  --primary: var(--color-sauge);
+  --primary-hover: var(--color-pale);
+  --on-primary: var(--color-noir);
+  --link: var(--color-sauge);
+  --ring-surface: #141a13;
+  --btn: rgb(255 255 255 / 0.07);
+  --btn-border: rgb(255 255 255 / 0.16);
+  --filet: rgb(255 255 255 / 0.13);
+  color-scheme: dark;
+}
+.surface {
+  --fg: var(--color-slate-900);
+  --fg-muted: var(--color-slate-500);
+  --hover: var(--color-slate-100);
+  --primary: var(--color-vert);
+  --primary-hover: var(--color-vert-fonce);
+  --on-primary: #fff;
+  --link: var(--color-vert);
+  --ring-surface: #fff;
+  --btn: #fff;
+  --btn-border: var(--color-slate-300);
+  color: var(--fg);
+  color-scheme: light;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply antialiased;
+  color: var(--fg);
+  letter-spacing: -0.011em;
+  background: var(--color-noir);
+}
+h1, h2, h3 { letter-spacing: -0.025em; }
+
+/* Panneau en verre dépoli */
+.glass {
+  background: rgb(15 20 14 / 0.66);
+  border: 1px solid var(--filet);
+  box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.07);
+  -webkit-backdrop-filter: blur(28px) saturate(1.25);
+  backdrop-filter: blur(28px) saturate(1.25);
+}
+
+/* Petite étiquette en capitales, comme sur le site */
+.eyebrow { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; }
+
+button:not(:disabled), [role="button"], summary, select, label[for] { cursor: pointer; }
+/* Les champs de saisie ont leur propre anneau de focus ; le contour sert aux boutons et liens */
+:not(input, textarea, select):focus-visible { outline: 2px solid var(--color-sauge); outline-offset: 2px; }
+.surface :not(input, textarea, select):focus-visible { outline-color: var(--color-vert); }
+
+/* ── 3. Effets ───────────────────────────────────────────────────────────── */
+
+/* Halos de lumière qui dérivent lentement derrière les panneaux, plus un grain très léger */
+.ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.ambient span { position: absolute; border-radius: 9999px; filter: blur(70px); animation: drift 40s ease-in-out infinite alternate; }
+.ambient span:nth-child(1) { width: 52rem; height: 52rem; left: -16rem; top: -22rem; background: radial-gradient(circle, rgb(60 79 59 / 0.95), transparent 66%); }
+.ambient span:nth-child(2) { width: 40rem; height: 40rem; right: -12rem; bottom: -16rem; background: radial-gradient(circle, rgb(169 196 159 / 0.30), transparent 66%); animation-duration: 48s; animation-delay: -14s; }
+.ambient span:nth-child(3) { width: 30rem; height: 30rem; left: 48%; top: -12rem; background: radial-gradient(circle, rgb(240 165 138 / 0.12), transparent 66%); animation-duration: 56s; animation-delay: -24s; }
+.ambient::after {
+  content: ""; position: absolute; inset: 0; opacity: 0.06; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+@keyframes drift { to { transform: translate3d(7rem, 5rem, 0) scale(1.18); } }
+
+/* Apparitions : la page glisse en place, les blocs d'une grille arrivent en cascade */
+@keyframes rise { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
+@keyframes sheet { from { transform: translateX(100%); } }
+@keyframes grow-x { from { transform: scaleX(0); } }
+@keyframes grow-y { from { transform: scaleY(0); } }
+@keyframes reveal-x { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
+.page { animation: rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger > * { animation: rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger > :nth-child(2) { animation-delay: 0.05s; } .stagger > :nth-child(3) { animation-delay: 0.10s; }
+.stagger > :nth-child(4) { animation-delay: 0.15s; } .stagger > :nth-child(5) { animation-delay: 0.20s; }
+.stagger > :nth-child(6) { animation-delay: 0.25s; } .stagger > :nth-child(n+7) { animation-delay: 0.30s; }
+.fade-in { animation: fade 0.25s ease both; }
+.pop-in { animation: pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.sheet-in { animation: sheet 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.grow-x { transform-origin: left; animation: grow-x 1s cubic-bezier(0.16, 1, 0.3, 1) both 0.15s; }
+.grow-y { transform-origin: bottom; animation: grow-y 0.9s cubic-bezier(0.16, 1, 0.3, 1) both 0.15s; }
+.reveal-x { animation: reveal-x 1.4s cubic-bezier(0.16, 1, 0.3, 1) both 0.15s; }
+.skeleton { background: linear-gradient(90deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.11), rgb(255 255 255 / 0.04)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.ping { position: relative; }
+.ping::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+/* Reflet qui suit le pointeur sur les cartes (.spot), légère élévation au survol (.lift) */
+.spot { position: relative; isolation: isolate; }
+.spot::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.35s;
+  background: radial-gradient(26rem circle at var(--mx, 50%) var(--my, 50%), rgb(169 196 159 / 0.18), transparent 42%);
+}
+.spot:hover::after { opacity: 1; }
+.lift { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s; }
+.lift:hover { transform: translateY(-3px); box-shadow: 0 22px 44px -20px rgb(0 0 0 / 0.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  :root { --fg: #0f140e; --fg-muted: #66735f; color-scheme: light; }
+  body { background: #fff; }
+  .glass { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ambient { display: none; }
+  .no-print { display: none !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4; margin: 0; }
+}

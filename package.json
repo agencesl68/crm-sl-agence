@@ -1,0 +1,29 @@
+{
+  "name": "sl-agence-crm",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "build:apercu": "VITE_MODE=apercu vite build --mode preview && python3 scripts/assembler-apercu.py apercu/crm-sl-agence.html 'Démo CRM SL Agence'",
+    "build:crm": "VITE_MODE=live vite build --mode preview && python3 scripts/assembler-apercu.py crm/crm-sl-agence.html 'CRM SL Agence'"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "lucide-react": "^1.50.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  }
+}
