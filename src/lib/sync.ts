@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useAction } from '../components/ui'
 import { isoDay } from './format'
+import { logSync } from './firebase'
 import { callMake, MAKE_READY } from './make'
 import { use, type SampleApi } from './runtime'
 import { useStore } from './store'
@@ -17,8 +18,12 @@ const norm = (s: unknown) => String(s ?? '').trim().toLowerCase()
 const same = (a: Record<string, unknown>, b: Record<string, unknown>) => Object.keys(b).every((k) => JSON.stringify(a[k] ?? null) === JSON.stringify(b[k] ?? null))
 
 /** Synchronisation automatique : sans message, ni en cas de succès ni d'échec. */
-function quiet<T>(silent: boolean, run: ReturnType<typeof useAction>, fn: () => Promise<T>, success: string): Promise<T | undefined> {
-  return silent ? fn().catch(() => undefined) : run(fn, success)
+function quiet<T>(key: string, silent: boolean, run: ReturnType<typeof useAction>, fn: () => Promise<T>, success: string): Promise<T | undefined> {
+  const logged = () => fn().then(
+    (r) => { logSync(key, { ok: true, detail: JSON.stringify(r ?? null) }); return r },
+    (e: unknown) => { logSync(key, { ok: false, detail: e instanceof Error ? `${e.message}\n${e.stack ?? ''}`.slice(0, 1500) : String(e) }); throw e },
+  )
+  return silent ? logged().catch(() => undefined) : run(logged, success)
 }
 
 /** Dernière exécution d'une synchronisation, mémorisée dans ce navigateur. */
@@ -35,7 +40,7 @@ export function due(key: string, minutes: number): boolean {
 export function useQontoSync() {
   const { data, insert, update } = useStore()
   const run = useAction()
-  return useCallback((silent = false) => quiet(silent, run, async () => {
+  return useCallback((silent = false) => quiet('qonto', silent, run, async () => {
     const out = await callMake('qonto')
     const accounts = Array.isArray(out.comptes) ? out.comptes as Record<string, unknown>[] : []
     const invoices = Array.isArray(out.factures) ? out.factures as Record<string, unknown>[] : []
@@ -85,7 +90,7 @@ function parseDate(v: unknown): Date | null {
 export function useImportLeads() {
   const { data, insert } = useStore()
   const run = useAction()
-  return useCallback((silent = false) => quiet(silent, run, async () => {
+  return useCallback((silent = false) => quiet('demandes', silent, run, async () => {
     const out = await callMake('demandes')
     const rows = Array.isArray(out.lignes) ? out.lignes as unknown[][] : []
     const known = new Set(data.deals.map((d) => d.external_ref).filter(Boolean))

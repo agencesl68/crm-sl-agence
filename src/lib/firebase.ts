@@ -33,6 +33,12 @@ export const idToken = async () => {
   return token
 }
 
+/** Journal des synchronisations Make (dernier résultat par type), pour comprendre un échec silencieux. */
+export function logSync(key: string, entry: { ok: boolean; detail: string }) {
+  if (!store || !auth?.currentUser) return
+  void setDoc(doc(store, 'sync_log', key), { ...entry, at: new Date().toISOString(), by: auth.currentUser.email ?? '' }).catch(() => {})
+}
+
 /** Messages lisibles pour les erreurs Firestore les plus courantes. */
 function explain(code: string): string {
   if (code === 'permission-denied') return 'Ce compte Google n’a pas accès au CRM. Connectez-vous avec une adresse autorisée.'
