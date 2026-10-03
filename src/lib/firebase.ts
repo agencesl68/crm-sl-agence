@@ -65,7 +65,19 @@ function presence(uid: string): RoomApi {
 }
 
 /** Contexte « données réelles » pour le magasin du CRM, à partir de l'utilisateur Google connecté. */
-export function cloudContext(user: User): LiveContext {
-  const userApi: UserApi = { id: async () => user.uid, profiles: async () => ({}), can: async () => true }
-  return { db, user: userApi, room: presence(user.uid), me: { name: user.displayName ?? user.email ?? '', email: user.email ?? '' }, keepNames: true }
+export function cloudContext(user: User, person: Person): LiveContext {
+  const id = person.id
+  const userApi: UserApi = { id: async () => id, profiles: async () => ({}), can: async () => true }
+  return { db, user: userApi, room: presence(id), me: { name: person.name, email: user.email ?? '' }, keepNames: true }
+}
+
+/** Le compte Google de l'agence est partagé : chacun indique qui il est, une fois par appareil. */
+export interface Person { id: string; name: string }
+export const PEOPLE: Person[] = [{ id: 'sacha', name: 'Sacha' }, { id: 'loic', name: 'Loïc' }]
+const KEY = 'crm-associe'
+export function savedPerson(): Person | null {
+  try { return PEOPLE.find((p) => p.id === localStorage.getItem(KEY)) ?? null } catch { return null }
+}
+export function savePerson(p: Person | null) {
+  try { if (p) localStorage.setItem(KEY, p.id); else localStorage.removeItem(KEY) } catch { /* navigateur privé */ }
 }

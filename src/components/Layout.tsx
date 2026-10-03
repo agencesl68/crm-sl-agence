@@ -8,7 +8,7 @@ import { isoDay } from '../lib/format'
 import { isOverdue } from '../lib/selectors'
 import { useStore } from '../lib/store'
 import { CLOUD, DEMO, LOGO } from '../lib/env'
-import { signOutCloud } from '../lib/firebase'
+import { savePerson, signOutCloud } from '../lib/firebase'
 import { AgendaPanel } from './AgendaPanel'
 import { CommandPalette, TopBar } from './TopBar'
 import { Avatar, IconButton } from './ui'
@@ -82,7 +82,7 @@ export function Layout() {
             <p className="truncate text-sm font-medium">{me?.full_name}</p>
             <p className="truncate text-xs text-fg-muted">{me?.email}</p>
           </div>
-          {CLOUD && <IconButton icon={LogOut} label="Se déconnecter" onClick={() => signOutCloud()} className="!h-11 !w-11" />}
+          {CLOUD && <IconButton icon={LogOut} label="Se déconnecter" onClick={() => { savePerson(null); void signOutCloud() }} className="!h-11 !w-11" />}
         </div>
       </nav>
 

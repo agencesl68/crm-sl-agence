@@ -1,7 +1,6 @@
 rules_version = '2';
 
 // Seuls les comptes Google des associés lisent et écrivent les données du CRM.
-// Remplacez l'adresse de Loïc par la sienne avant de publier ces règles.
 service cloud.firestore {
   match /databases/{database}/documents {
     function equipe() {
@@ -9,8 +8,7 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && request.auth.token.email in [
           'sachamuller79@gmail.com',
-          'agence.sl.68@gmail.com',
-          'ADRESSE_DE_LOIC@gmail.com'
+          'agence.sl.68@gmail.com'
         ];
     }
     match /{document=**} {

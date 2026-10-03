@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { DEMO_USER_ID } from './lib/demo'
 import { ARTIFACT, CLOUD } from './lib/env'
-import { cloudContext, signIn, signOutCloud, watchAuth } from './lib/firebase'
+import { cloudContext, PEOPLE, savedPerson, savePerson, signIn, signOutCloud, watchAuth, type Person } from './lib/firebase'
 import type { User } from 'firebase/auth'
 import { Button } from './components/ui'
 import { LOGO } from './lib/env'
@@ -87,6 +87,7 @@ function LiveApp() {
 function CloudApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
   const [failed, setFailed] = useState<string | null>(null)
+  const [person, setPerson] = useState<Person | null>(savedPerson)
   useEffect(() => watchAuth(setUser), [])
   if (user === undefined) return <Loading />
   if (!user) {
@@ -102,7 +103,21 @@ function CloudApp() {
       </div>
     )
   }
-  return <StoreProvider key={user.uid} userId={user.uid} live={cloudContext(user)}><Workspace /></StoreProvider>
+  if (!person) {
+    return (
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="glass w-full max-w-sm rounded-3xl p-8 text-center">
+          <img src={LOGO} alt="SL Agence" className="mx-auto h-16 w-auto" />
+          <h1 className="mt-5 text-xl font-medium tracking-tight">Qui êtes-vous ?</h1>
+          <p className="mt-1 text-sm text-fg-muted">Mémorisé sur cet appareil.</p>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {PEOPLE.map((p) => <Button key={p.id} variant="primary" onClick={() => { savePerson(p); setPerson(p) }}>Je suis {p.name}</Button>)}
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return <StoreProvider key={person.id} userId={person.id} live={cloudContext(user, person)}><Workspace /></StoreProvider>
 }
 
 export default function App() {
