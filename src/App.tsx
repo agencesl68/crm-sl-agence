@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { DEMO_USER_ID } from './lib/demo'
 import { ARTIFACT, CLOUD } from './lib/env'
-import { cloudContext, PEOPLE, savedPerson, savePerson, signIn, signOutCloud, watchAuth, type Person } from './lib/firebase'
+import { cloudContext, PEOPLE, personFor, savedPerson, savePerson, signIn, signOutCloud, watchAuth, type Person } from './lib/firebase'
 import type { User } from 'firebase/auth'
 import { Button } from './components/ui'
 import { LOGO } from './lib/env'
@@ -88,7 +88,7 @@ function CloudApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
   const [failed, setFailed] = useState<string | null>(null)
   const [person, setPerson] = useState<Person | null>(savedPerson)
-  useEffect(() => watchAuth(setUser), [])
+  useEffect(() => watchAuth((u) => { setUser(u); setPerson(personFor(u)) }), [])
   if (user === undefined) return <Loading />
   if (!user) {
     return (

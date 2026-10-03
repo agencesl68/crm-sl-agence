@@ -71,12 +71,18 @@ export function cloudContext(user: User, person: Person): LiveContext {
   return { db, user: userApi, room: presence(id), me: { name: person.name, email: user.email ?? '' }, keepNames: true }
 }
 
-/** Le compte Google de l'agence est partagé : chacun indique qui il est, une fois par appareil. */
-export interface Person { id: string; name: string }
-export const PEOPLE: Person[] = [{ id: 'sacha', name: 'Sacha' }, { id: 'loic', name: 'Loïc' }]
+/** Chacun est reconnu par son compte Google ; sur le compte partagé de l'agence, il indique qui il est, une fois par appareil. */
+export interface Person { id: string; name: string; email: string }
+export const PEOPLE: Person[] = [
+  { id: 'sacha', name: 'Sacha', email: 'sachamuller79@gmail.com' },
+  { id: 'loic', name: 'Loïc', email: 'loic.bistch8@gmail.com' },
+]
 const KEY = 'crm-associe'
 export function savedPerson(): Person | null {
   try { return PEOPLE.find((p) => p.id === localStorage.getItem(KEY)) ?? null } catch { return null }
+}
+export function personFor(user: User | null | undefined): Person | null {
+  return PEOPLE.find((p) => p.email === user?.email?.toLowerCase()) ?? savedPerson()
 }
 export function savePerson(p: Person | null) {
   try { if (p) localStorage.setItem(KEY, p.id); else localStorage.removeItem(KEY) } catch { /* navigateur privé */ }
