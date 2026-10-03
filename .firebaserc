@@ -1,1 +1,5 @@
-{ "projects": { "default": "sl-agence-crm" } }
+{
+  "projects": {
+    "default": "sl-agence-crm"
+  }
+}
