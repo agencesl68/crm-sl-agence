@@ -5,8 +5,7 @@ import {
 import { ACTIVITY_LABEL } from '../lib/constants'
 import { ago, fmtDate, isoDay } from '../lib/format'
 import { useLookups } from '../lib/selectors'
-import { ARTIFACT } from '../lib/env'
-import { callMake } from '../lib/make'
+import { callMake, MAKE_READY } from '../lib/make'
 import { useStore } from '../lib/store'
 import type { Activity, ActivityType, Task } from '../lib/types'
 import { Avatar, Button, Field, FormActions, IconButton, Input, Modal, Select, Textarea, useAction } from './ui'
@@ -160,7 +159,7 @@ export function ComposeEmail({
     e.preventDefault()
     setBusy(true)
     const ok = await run(async () => {
-      if (ARTIFACT) await callMake('email', { to: form.to.trim(), subject: form.subject.trim(), body: form.body })
+      if (MAKE_READY) await callMake('email', { to: form.to.trim(), subject: form.subject.trim(), body: form.body })
       return insert('outbox', {
         to_email: form.to.trim(), subject: form.subject.trim(), body: form.body, kind, status: 'sent', sent_at: new Date().toISOString(),
         deal_id: link.deal_id ?? null, contact_id: link.contact_id ?? null, created_by: me?.id ?? null,

@@ -33,6 +33,8 @@ jobs:
           VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.FIREBASE_MESSAGING_SENDER_ID }}
+          # Webhook du scénario Make « CRM - Passerelle du site » (Qonto, Gmail, demandes du site)
+          VITE_MAKE_GATEWAY: ${{ vars.MAKE_GATEWAY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

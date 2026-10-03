@@ -1,0 +1,643 @@
+{
+ "name": "CRM - Passerelle du site",
+ "flow": [
+  {
+   "id": 1,
+   "module": "gateway:CustomWebHook",
+   "version": 1,
+   "parameters": {
+    "hook": 3834744,
+    "maxResults": 1
+   },
+   "mapper": {},
+   "metadata": {
+    "designer": {
+     "x": 0,
+     "y": 300
+    }
+   }
+  },
+  {
+   "id": 2,
+   "module": "http:MakeRequest",
+   "version": 4,
+   "parameters": {
+    "authenticationType": "noAuth"
+   },
+   "mapper": {
+    "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+    "method": "post",
+    "queryParameters": [
+     {
+      "name": "key",
+      "value": "AIzaSyBxNglyyDMlQutjYa52ESkcylA9NqhBBm4"
+     }
+    ],
+    "contentType": "json",
+    "inputMethod": "jsonString",
+    "jsonStringBodyContent": "{\"idToken\":\"{{1.token}}\"}",
+    "parseResponse": true,
+    "stopOnHttpError": false,
+    "timeout": 20,
+    "allowRedirects": true,
+    "shareCookies": false,
+    "requestCompressedContent": true
+   },
+   "metadata": {
+    "designer": {
+     "x": 300,
+     "y": 300
+    }
+   },
+   "onerror": [
+    {
+     "id": 90,
+     "module": "gateway:WebhookRespond",
+     "version": 1,
+     "parameters": {},
+     "mapper": {
+      "status": 502,
+      "body": "{\"erreur\": \"Vérification de la connexion impossible, réessayez.\"}",
+      "headers": [
+       {
+        "key": "Access-Control-Allow-Origin",
+        "value": "*"
+       },
+       {
+        "key": "Content-Type",
+        "value": "application/json; charset=utf-8"
+       }
+      ]
+     },
+     "metadata": {
+      "designer": {
+       "x": 0,
+       "y": 0
+      }
+     }
+    },
+    {
+     "id": 91,
+     "module": "builtin:Ignore",
+     "version": 1,
+     "parameters": {},
+     "mapper": null,
+     "metadata": {
+      "designer": {
+       "x": 0,
+       "y": 0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "module": "builtin:BasicRouter",
+   "version": 1,
+   "mapper": null,
+   "metadata": {
+    "designer": {
+     "x": 600,
+     "y": 300
+    }
+   },
+   "routes": [
+    {
+     "flow": [
+      {
+       "id": 40,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 403,
+        "body": "{\"erreur\": \"acces\"}",
+        "headers": [
+         {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": 0
+        }
+       },
+       "filter": {
+        "name": "Accès refusé",
+        "conditions": [
+         [
+          {
+           "a": "{{2.statusCode}}",
+           "o": "number:notequal",
+           "b": "200"
+          }
+         ],
+         [
+          {
+           "a": "{{2.data.users[1].email}}",
+           "o": "text:notpattern:ci",
+           "b": "^(sachamuller79@gmail\\.com|loic\\.bistch8@gmail\\.com|agence\\.sl\\.68@gmail\\.com)$"
+          }
+         ],
+         [
+          {
+           "a": "{{2.data.users[1].emailVerified}}",
+           "o": "boolean:notequal",
+           "b": "true"
+          }
+         ]
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 10,
+       "module": "qonto:readOrganization",
+       "version": 2,
+       "parameters": {
+        "__IMTCONN__": 11524695
+       },
+       "mapper": {},
+       "filter": {
+        "name": "Associé connecté — qonto",
+        "conditions": [
+         [
+          {
+           "a": "{{2.statusCode}}",
+           "o": "number:equal",
+           "b": "200"
+          },
+          {
+           "a": "{{2.data.users[1].email}}",
+           "o": "text:pattern:ci",
+           "b": "^(sachamuller79@gmail\\.com|loic\\.bistch8@gmail\\.com|agence\\.sl\\.68@gmail\\.com)$"
+          },
+          {
+           "a": "{{2.data.users[1].emailVerified}}",
+           "o": "boolean:equal",
+           "b": "true"
+          },
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "qonto"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": 150
+        }
+       },
+       "onerror": [
+        {
+         "id": 80,
+         "module": "gateway:WebhookRespond",
+         "version": 1,
+         "parameters": {},
+         "mapper": {
+          "status": 502,
+          "body": "{\"erreur\": \"Qonto ne répond pas pour le moment.\"}",
+          "headers": [
+           {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+           },
+           {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+           }
+          ]
+         },
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        },
+        {
+         "id": 81,
+         "module": "builtin:Ignore",
+         "version": 1,
+         "parameters": {},
+         "mapper": null,
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        }
+       ]
+      },
+      {
+       "id": 11,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{10.organization}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 1200,
+         "y": 150
+        }
+       }
+      },
+      {
+       "id": 12,
+       "module": "qonto:makeApiCall",
+       "version": 2,
+       "parameters": {
+        "__IMTCONN__": 11524695
+       },
+       "mapper": {
+        "url": "v2/client_invoices",
+        "method": "GET",
+        "qs": [
+         {
+          "key": "per_page",
+          "value": "100"
+         },
+         {
+          "key": "sort_by",
+          "value": "created_at:desc"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 1500,
+         "y": 150
+        }
+       },
+       "onerror": [
+        {
+         "id": 82,
+         "module": "gateway:WebhookRespond",
+         "version": 1,
+         "parameters": {},
+         "mapper": {
+          "status": 502,
+          "body": "{\"erreur\": \"Qonto ne répond pas pour le moment.\"}",
+          "headers": [
+           {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+           },
+           {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+           }
+          ]
+         },
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        },
+        {
+         "id": 83,
+         "module": "builtin:Ignore",
+         "version": 1,
+         "parameters": {},
+         "mapper": null,
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        }
+       ]
+      },
+      {
+       "id": 13,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{12.body}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 1800,
+         "y": 150
+        }
+       }
+      },
+      {
+       "id": 14,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 200,
+        "body": "{\"organisation\":{{11.json}},\"factures\":{{13.json}}}",
+        "headers": [
+         {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 2100,
+         "y": 150
+        }
+       }
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 20,
+       "module": "google-sheets:makeAPICall",
+       "version": 2,
+       "parameters": {
+        "__IMTCONN__": 7002860
+       },
+       "mapper": {
+        "qs": [],
+        "url": "spreadsheets/1ezfWA_cG5FTScFTlTUhY5xu0PCnSRjv1vc65xgtujIk/values/A2:J1000",
+        "method": "GET",
+        "headers": []
+       },
+       "filter": {
+        "name": "Associé connecté — demandes",
+        "conditions": [
+         [
+          {
+           "a": "{{2.statusCode}}",
+           "o": "number:equal",
+           "b": "200"
+          },
+          {
+           "a": "{{2.data.users[1].email}}",
+           "o": "text:pattern:ci",
+           "b": "^(sachamuller79@gmail\\.com|loic\\.bistch8@gmail\\.com|agence\\.sl\\.68@gmail\\.com)$"
+          },
+          {
+           "a": "{{2.data.users[1].emailVerified}}",
+           "o": "boolean:equal",
+           "b": "true"
+          },
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "demandes"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": 300
+        }
+       },
+       "onerror": [
+        {
+         "id": 84,
+         "module": "gateway:WebhookRespond",
+         "version": 1,
+         "parameters": {},
+         "mapper": {
+          "status": 502,
+          "body": "{\"erreur\": \"Le tableau des demandes est inaccessible.\"}",
+          "headers": [
+           {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+           },
+           {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+           }
+          ]
+         },
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        },
+        {
+         "id": 85,
+         "module": "builtin:Ignore",
+         "version": 1,
+         "parameters": {},
+         "mapper": null,
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        }
+       ]
+      },
+      {
+       "id": 21,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{20.body}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 1200,
+         "y": 300
+        }
+       }
+      },
+      {
+       "id": 22,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 200,
+        "body": "{{21.json}}",
+        "headers": [
+         {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 1500,
+         "y": 300
+        }
+       }
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 30,
+       "module": "google-email:sendAnEmail",
+       "version": 4,
+       "parameters": {
+        "__IMTCONN__": 8240966
+       },
+       "mapper": {
+        "to": [
+         "{{1.to}}"
+        ],
+        "subject": "{{1.subject}}",
+        "bodyType": "rawHtml",
+        "content": "{{replace(replace(replace(1.body; \"&\"; \"&amp;\"); \"<\"; \"&lt;\"); newline; \"<br>\")}}"
+       },
+       "filter": {
+        "name": "Associé connecté — email",
+        "conditions": [
+         [
+          {
+           "a": "{{2.statusCode}}",
+           "o": "number:equal",
+           "b": "200"
+          },
+          {
+           "a": "{{2.data.users[1].email}}",
+           "o": "text:pattern:ci",
+           "b": "^(sachamuller79@gmail\\.com|loic\\.bistch8@gmail\\.com|agence\\.sl\\.68@gmail\\.com)$"
+          },
+          {
+           "a": "{{2.data.users[1].emailVerified}}",
+           "o": "boolean:equal",
+           "b": "true"
+          },
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "email"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": 450
+        }
+       },
+       "onerror": [
+        {
+         "id": 86,
+         "module": "gateway:WebhookRespond",
+         "version": 1,
+         "parameters": {},
+         "mapper": {
+          "status": 502,
+          "body": "{\"erreur\": \"Gmail a refusé l’envoi.\"}",
+          "headers": [
+           {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+           },
+           {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+           }
+          ]
+         },
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        },
+        {
+         "id": 87,
+         "module": "builtin:Ignore",
+         "version": 1,
+         "parameters": {},
+         "mapper": null,
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        }
+       ]
+      },
+      {
+       "id": 31,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 200,
+        "body": "{\"message_id\":\"{{30.id}}\"}",
+        "headers": [
+         {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 1200,
+         "y": 450
+        }
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "metadata": {
+  "instant": true,
+  "version": 1,
+  "scenario": {
+   "dlq": false,
+   "dataloss": false,
+   "maxErrors": 3,
+   "autoCommit": true,
+   "roundtrips": 1,
+   "sequential": false,
+   "confidential": false
+  }
+ }
+}

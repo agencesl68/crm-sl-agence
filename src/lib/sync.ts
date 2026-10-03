@@ -1,11 +1,17 @@
 import { useCallback } from 'react'
 import { useAction } from '../components/ui'
-import { ARTIFACT } from './env'
 import { isoDay } from './format'
-import { callMake } from './make'
+import { callMake, MAKE_READY } from './make'
 import { use, type SampleApi } from './runtime'
 import { useStore } from './store'
 import type { InvoiceStatus } from './types'
+
+/** Identifiant stable d'une demande : les deux associés peuvent l'importer en même temps sans doublon. */
+function refId(ref: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < ref.length; i++) h = Math.imul(h ^ ref.charCodeAt(i), 0x01000193)
+  return `site-${(h >>> 0).toString(36)}-${ref.length}`
+}
 
 const norm = (s: unknown) => String(s ?? '').trim().toLowerCase()
 const same = (a: Record<string, unknown>, b: Record<string, unknown>) => Object.keys(b).every((k) => JSON.stringify(a[k] ?? null) === JSON.stringify(b[k] ?? null))
@@ -106,7 +112,7 @@ export function useImportLeads() {
       }
       const who = entreprise || `${prenom} ${nom}`.trim() || 'Demande du site'
       const deal = await insert('deals', {
-        title: theme ? `${who} — ${theme}` : who, company_id: companyId, contact_id: contact.id, source: 'formulaire',
+        id: refId(ref), title: theme ? `${who} — ${theme}` : who, company_id: companyId, contact_id: contact.id, source: 'formulaire',
         need: theme || null, message: message || null, external_ref: ref, ...(when ? { created_at: when.toISOString() } : {}),
       })
       await insert('activities', { type: 'systeme', subject: `Demande reçue via le site${source ? ` (${source})` : ''}`, deal_id: deal.id, company_id: companyId, contact_id: contact.id })
@@ -148,5 +154,5 @@ export function useWriteBrief() {
   }, 'Point du jour rédigé'), [data, insert, run, settings])
 }
 
-/** Boutons de synchronisation : version claude.ai ; sur GitHub, Make met la base à jour tout seul. */
-export const SYNC_ENABLED = ARTIFACT
+/** Synchronisations Qonto et demandes du site : actives dès que Make est branché. */
+export const SYNC_ENABLED = MAKE_READY

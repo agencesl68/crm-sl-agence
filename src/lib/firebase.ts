@@ -26,6 +26,12 @@ const store = app ? getFirestore(app) : null
 export const watchAuth = (fn: (user: User | null) => void) => (auth ? onAuthStateChanged(auth, fn) : () => {})
 export const signIn = () => signInWithPopup(auth!, new GoogleAuthProvider())
 export const signOutCloud = () => (auth ? signOut(auth) : Promise.resolve())
+/** Jeton de connexion Google, vérifié par la passerelle Make avant tout appel. */
+export const idToken = async () => {
+  const token = await auth?.currentUser?.getIdToken()
+  if (!token) throw new Error('Reconnectez-vous pour utiliser Qonto, Gmail et les demandes du site.')
+  return token
+}
 
 /** Messages lisibles pour les erreurs Firestore les plus courantes. */
 function explain(code: string): string {

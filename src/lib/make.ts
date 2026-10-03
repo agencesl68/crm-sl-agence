@@ -1,3 +1,5 @@
+import { ARTIFACT, CLOUD } from './env'
+import { idToken } from './firebase'
 import { use, type McpApi, type McpError } from './runtime'
 
 /**
@@ -39,11 +41,59 @@ function outputs(payload: unknown): Record<string, unknown> {
   }))
 }
 
+// ───────────── Version GitHub : passerelle Make (webhook « CRM - Passerelle du site ») ─────────────
+
+/** Adresse du webhook ; Make vérifie le jeton Google de l'associé avant d'appeler Qonto, Gmail ou Google Sheets. */
+const GATEWAY = import.meta.env.VITE_MAKE_GATEWAY as string | undefined
+/** Qonto, Gmail et les demandes du site sont branchés dans cette version du CRM. */
+export const MAKE_READY = ARTIFACT || (CLOUD && !!GATEWAY)
+
+type Obj = Record<string, unknown>
+const obj = (v: unknown): Obj => (v && typeof v === 'object' ? v as Obj : {})
+
+/** La passerelle renvoie les réponses brutes de Qonto et Google : on les met au format des scénarios à la demande. */
+const GATEWAY_OUTPUT: Partial<Record<MakeTool, (out: Obj) => Obj>> = {
+  qonto: (out) => ({
+    comptes: obj(out.organisation).bank_accounts ?? [],
+    factures: (Array.isArray(obj(out.factures).client_invoices) ? obj(out.factures).client_invoices as Obj[] : []).map((f) => {
+      const client = obj(f.client)
+      return {
+        id: f.id, number: f.number, status: f.status, issue_date: f.issue_date, due_date: f.due_date, paid_at: f.paid_at,
+        total: obj(f.total_amount).value, vat: obj(f.vat_amount).value, invoice_url: f.invoice_url,
+        client_id: client.id ?? null, client_email: client.email ?? f.contact_email ?? null,
+        client_name: client.name || [client.first_name, client.last_name].filter(Boolean).join(' ') || null,
+      }
+    }),
+  }),
+  demandes: (out) => ({ lignes: Array.isArray(out.values) ? out.values : [] }),
+  email: (out) => out,
+}
+
+async function viaGateway(tool: MakeTool, input: Obj): Promise<Obj> {
+  const shape = GATEWAY_OUTPUT[tool]
+  if (!shape) throw new Error('Ce branchement n’existe pas encore dans la version en ligne du CRM.')
+  const body = new URLSearchParams({ action: tool, token: await idToken() })
+  for (const [k, v] of Object.entries(input)) body.set(k, typeof v === 'string' ? v : JSON.stringify(v))
+  let res: Response
+  try {
+    // Corps « formulaire » : pas de requête préalable CORS, Make lit directement les champs
+    res = await fetch(GATEWAY!, { method: 'POST', body })
+  } catch {
+    throw new Error('Make ne répond pas pour le moment, réessayez dans un instant.')
+  }
+  let out: Obj | null = null
+  try { out = obj(JSON.parse(await res.text())) } catch { /* réponse non JSON */ }
+  if (res.status === 403) throw new Error('Make a refusé l’accès : reconnectez-vous avec le compte Google d’un associé.')
+  if (!res.ok || !out) throw new Error(typeof out?.erreur === 'string' ? out.erreur : `Make n’a pas pu traiter la demande (${res.status}).`)
+  return shape(out)
+}
+
 let mcpPromise: Promise<McpApi | null> | null = null
 export const makeAvailable = () => (mcpPromise ??= use<McpApi>('mcp')).then((m) => !!m)
 
 /** Lance un scénario Make et renvoie ses sorties. */
 export async function callMake(tool: MakeTool, input: Record<string, unknown> = {}, cacheMinutes = 0): Promise<Record<string, unknown>> {
+  if (!ARTIFACT && CLOUD && GATEWAY) return viaGateway(tool, input)
   const mcp = await (mcpPromise ??= use<McpApi>('mcp'))
   if (!mcp) throw new Error('Les branchements Make (Qonto, e-mails, demandes du site, météo) ne sont pas encore activés dans cette version du CRM.')
   try {
