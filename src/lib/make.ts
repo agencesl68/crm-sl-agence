@@ -11,6 +11,9 @@ export const MAKE_TOOLS = {
   qonto: 's7743454_crm_qonto_comptes_et_factures',
   email: 's7743455_crm_envoyer_un_email',
   demandes: 's7743456_crm_demandes_du_site',
+  // Uniquement via la passerelle (version GitHub) : texte du site d'un prospect, rédaction par Claude
+  site: 'passerelle_site',
+  rediger: 'passerelle_rediger',
 } as const
 export type MakeTool = keyof typeof MAKE_TOOLS
 
@@ -47,6 +50,8 @@ function outputs(payload: unknown): Record<string, unknown> {
 const GATEWAY = import.meta.env.VITE_MAKE_GATEWAY as string | undefined
 /** Qonto, Gmail et les demandes du site sont branchés dans cette version du CRM. */
 export const MAKE_READY = ARTIFACT || (CLOUD && !!GATEWAY)
+/** Version GitHub : la passerelle sait aussi lire le site d'un prospect et faire rédiger Claude (API Anthropic). */
+export const GATEWAY_READY = !ARTIFACT && CLOUD && !!GATEWAY
 
 type Obj = Record<string, unknown>
 const obj = (v: unknown): Obj => (v && typeof v === 'object' ? v as Obj : {})
@@ -67,6 +72,8 @@ const GATEWAY_OUTPUT: Partial<Record<MakeTool, (out: Obj) => Obj>> = {
   }),
   demandes: (out) => ({ lignes: Array.isArray(out.values) ? out.values : [] }),
   email: (out) => out,
+  site: (out) => ({ texte: typeof out.texte === 'string' ? out.texte : '' }),
+  rediger: (out) => ({ texte: typeof out.texte === 'string' ? out.texte : '' }),
 }
 
 async function viaGateway(tool: MakeTool, input: Obj): Promise<Obj> {

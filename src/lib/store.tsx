@@ -29,6 +29,7 @@ const TABLE_CONFIG: Record<TableName, { pk: string; order: string; asc: boolean 
   team_notes: { pk: 'id', order: 'id', asc: true },
   settings: { pk: 'id', order: 'id', asc: true },
   outbox: { pk: 'id', order: 'created_at', asc: false },
+  prospects: { pk: 'id', order: 'created_at', asc: false },
 }
 const TABLE_NAMES = Object.keys(TABLE_CONFIG) as TableName[]
 
@@ -54,6 +55,7 @@ const DEFAULTS: Partial<Record<TableName, AnyRow>> = {
   outbox: { status: 'pending', kind: 'email', error: null, sent_at: null },
   instagram_messages: { handled: false, reply: null, reply_status: null },
   instagram_schedule: { status: 'brouillon', media_urls: [], error: null, post_id: null },
+  prospects: { status: 'actif', step: 0, history: [], draft_subject: null, draft_body: null, draft_step: null, snooze_until: null, error: null, deal_id: null, batch: null, website: null, city: null, job_title: null, info: null, cible: 'autre' },
 }
 
 // Suppressions en cascade : ce que faisaient les clés étrangères d'une base SQL
@@ -68,7 +70,7 @@ const CASCADE: Partial<Record<TableName, { table: TableName; field: string; acti
   deals: [
     { table: 'activities', field: 'deal_id', action: 'delete' }, { table: 'tasks', field: 'deal_id', action: 'delete' },
     { table: 'projects', field: 'deal_id', action: 'null' }, { table: 'quotes', field: 'deal_id', action: 'null' },
-    { table: 'instagram_messages', field: 'deal_id', action: 'null' },
+    { table: 'instagram_messages', field: 'deal_id', action: 'null' }, { table: 'prospects', field: 'deal_id', action: 'null' },
   ],
   projects: [{ table: 'tasks', field: 'project_id', action: 'delete' }, { table: 'quotes', field: 'project_id', action: 'null' }, { table: 'subscriptions', field: 'project_id', action: 'null' }],
   quotes: [{ table: 'quote_lines', field: 'quote_id', action: 'delete' }, { table: 'invoice_requests', field: 'quote_id', action: 'null' }],

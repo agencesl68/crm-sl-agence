@@ -253,5 +253,10 @@ export function demoData(): Tables {
       email_signature: 'Sacha et Loïc\nSL Agence — Applications métier, automatisation et IA\n07 67 08 19 43 · slagence.fr',
     }],
     outbox: [],
+    prospects: [
+      { id: 'pr1', first_name: 'Claire', last_name: 'Martin', email: 'claire@patrimoine-exemple.fr', company: 'Martin Patrimoine', website: null, city: 'Lyon', job_title: 'Conseillère en gestion de patrimoine', info: 'Cabinet indépendant, spécialisé dans la retraite des professions libérales.', cible: 'cgp', status: 'actif', step: 0, history: [], draft_subject: null, draft_body: null, draft_step: null, snooze_until: null, error: null, deal_id: null, batch: 'demo', created_at: ago(1) },
+      { id: 'pr2', first_name: 'Julien', last_name: 'Roux', email: 'julien@formation-exemple.fr', company: 'Roux Formation', website: null, city: 'Nantes', job_title: 'Dirigeant', info: 'Organisme de formation certifié Qualiopi, formations en management.', cible: 'formation', status: 'actif', step: 1, history: [{ step: 1, subject: 'Roux Formation et les émargements', sent_at: ago(5), by: LOIC }], draft_subject: null, draft_body: null, draft_step: null, snooze_until: null, error: null, deal_id: null, batch: 'demo', created_at: ago(6) },
+      { id: 'pr3', first_name: 'Sophie', last_name: 'Bernard', email: 'sophie@courtage-exemple.fr', company: 'Bernard Courtage', website: null, city: 'Bordeaux', job_title: 'Gérante', info: null, cible: 'courtier', status: 'repondu', step: 1, history: [{ step: 1, subject: 'Une question pour Bernard Courtage', sent_at: ago(3), by: LOIC }], draft_subject: null, draft_body: null, draft_step: null, snooze_until: null, error: null, deal_id: null, batch: 'demo', created_at: ago(4) },
+    ],
   }
 }

@@ -159,6 +159,29 @@ export interface OutboxItem {
   created_by: string | null; created_at: string; sent_at: string | null
 }
 
+/** Cible de prospection par e-mail : décide du constat, de l'exemple et du ton du message. */
+export type Cible = 'cgp' | 'formation' | 'courtier' | 'immobilier' | 'comptable' | 'autre'
+/** actif : dans la séquence (étape 0 à 3) ; les autres statuts sortent le prospect de la séquence. */
+export type ProspectStatus = 'actif' | 'repondu' | 'pas_interesse' | 'stop'
+
+export interface ProspectSend { step: number; subject: string; sent_at: string; by: string | null }
+
+/** Prospect contacté par e-mail à froid (onglet Prospection), distinct des leads du pipeline. */
+export interface Prospect {
+  id: string; first_name: string; last_name: string; email: string; company: string
+  website: string | null; city: string | null; job_title: string | null
+  /** Ce que l'on sait de l'entreprise (activité, spécialité) : sert à personnaliser le premier message. */
+  info: string | null
+  cible: Cible; status: ProspectStatus
+  /** Nombre de messages déjà envoyés : 0 à contacter, 1 premier mail, 2 relance, 3 séquence terminée. */
+  step: number
+  history: ProspectSend[]
+  draft_subject: string | null; draft_body: string | null; draft_step: number | null
+  /** Écarté de la file jusqu'à cette date (AAAA-MM-JJ). */
+  snooze_until: string | null
+  error: string | null; deal_id: string | null; batch: string | null; created_at: string
+}
+
 export interface Tables {
   profiles: Profile[]
   companies: Company[]
@@ -184,6 +207,7 @@ export interface Tables {
   team_notes: TeamNote[]
   settings: Settings[]
   outbox: OutboxItem[]
+  prospects: Prospect[]
 }
 export type TableName = keyof Tables
 export type Row<T extends TableName> = Tables[T][number]

@@ -623,6 +623,308 @@
        }
       }
      ]
+    },
+    {
+     "flow": [
+      {
+       "id": 50,
+       "module": "http:MakeRequest",
+       "version": 4,
+       "parameters": {
+        "authenticationType": "noAuth"
+       },
+       "mapper": {
+        "url": "{{1.site}}",
+        "method": "get",
+        "parseResponse": false,
+        "stopOnHttpError": true,
+        "timeout": 15,
+        "allowRedirects": true,
+        "shareCookies": false,
+        "requestCompressedContent": true
+       },
+       "filter": {
+        "name": "Associé connecté — site d'un prospect",
+        "conditions": [
+         [
+          {
+           "a": "{{2.statusCode}}",
+           "o": "number:equal",
+           "b": "200"
+          },
+          {
+           "a": "{{2.data.users[1].email}}",
+           "o": "text:pattern:ci",
+           "b": "^(sachamuller79@gmail\\.com|loic\\.bistch8@gmail\\.com|agence\\.sl\\.68@gmail\\.com)$"
+          },
+          {
+           "a": "{{2.data.users[1].emailVerified}}",
+           "o": "boolean:equal",
+           "b": "true"
+          },
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "site"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": 750
+        }
+       },
+       "onerror": [
+        {
+         "id": 92,
+         "module": "gateway:WebhookRespond",
+         "version": 1,
+         "parameters": {},
+         "mapper": {
+          "status": 200,
+          "body": "{\"texte\": \"\"}",
+          "headers": [
+           {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+           },
+           {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+           }
+          ]
+         },
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        },
+        {
+         "id": 93,
+         "module": "builtin:Ignore",
+         "version": 1,
+         "parameters": {},
+         "mapper": null,
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        }
+       ]
+      },
+      {
+       "id": 51,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{substring(stripHTML(toString(50.data)); 0; 4000)}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 1200,
+         "y": 750
+        }
+       }
+      },
+      {
+       "id": 52,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 200,
+        "body": "{\"texte\":{{51.json}}}",
+        "headers": [
+         {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 1500,
+         "y": 750
+        }
+       }
+      }
+     ]
+    },
+    {
+     "flow": [
+      {
+       "id": 60,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{1.prompt}}"
+       },
+       "filter": {
+        "name": "Associé connecté — rédaction par Claude",
+        "conditions": [
+         [
+          {
+           "a": "{{2.statusCode}}",
+           "o": "number:equal",
+           "b": "200"
+          },
+          {
+           "a": "{{2.data.users[1].email}}",
+           "o": "text:pattern:ci",
+           "b": "^(sachamuller79@gmail\\.com|loic\\.bistch8@gmail\\.com|agence\\.sl\\.68@gmail\\.com)$"
+          },
+          {
+           "a": "{{2.data.users[1].emailVerified}}",
+           "o": "boolean:equal",
+           "b": "true"
+          },
+          {
+           "a": "{{1.action}}",
+           "o": "text:equal",
+           "b": "rediger"
+          }
+         ]
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 900,
+         "y": 1050
+        }
+       }
+      },
+      {
+       "id": 61,
+       "module": "http:MakeRequest",
+       "version": 4,
+       "parameters": {
+        "authenticationType": "noAuth"
+       },
+       "mapper": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "method": "post",
+        "headers": [
+         {
+          "name": "x-api-key",
+          "value": "COLLER_ICI_LA_CLE_API_ANTHROPIC"
+         },
+         {
+          "name": "anthropic-version",
+          "value": "2023-06-01"
+         }
+        ],
+        "contentType": "json",
+        "inputMethod": "jsonString",
+        "jsonStringBodyContent": "{\"model\":\"claude-haiku-4-5\",\"max_tokens\":400,\"messages\":[{\"role\":\"user\",\"content\":{{60.json}}}]}",
+        "parseResponse": true,
+        "stopOnHttpError": true,
+        "timeout": 60,
+        "allowRedirects": true,
+        "shareCookies": false,
+        "requestCompressedContent": true
+       },
+       "metadata": {
+        "designer": {
+         "x": 1200,
+         "y": 1050
+        }
+       },
+       "onerror": [
+        {
+         "id": 94,
+         "module": "gateway:WebhookRespond",
+         "version": 1,
+         "parameters": {},
+         "mapper": {
+          "status": 502,
+          "body": "{\"erreur\": \"Claude n’a pas pu rédiger le message.\"}",
+          "headers": [
+           {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+           },
+           {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+           }
+          ]
+         },
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        },
+        {
+         "id": 95,
+         "module": "builtin:Ignore",
+         "version": 1,
+         "parameters": {},
+         "mapper": null,
+         "metadata": {
+          "designer": {
+           "x": 0,
+           "y": 0
+          }
+         }
+        }
+       ]
+      },
+      {
+       "id": 62,
+       "module": "json:TransformToJSON",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "object": "{{61.data.content[1].text}}"
+       },
+       "metadata": {
+        "designer": {
+         "x": 1500,
+         "y": 1050
+        }
+       }
+      },
+      {
+       "id": 63,
+       "module": "gateway:WebhookRespond",
+       "version": 1,
+       "parameters": {},
+       "mapper": {
+        "status": 200,
+        "body": "{\"texte\":{{62.json}}}",
+        "headers": [
+         {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+         },
+         {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+         }
+        ]
+       },
+       "metadata": {
+        "designer": {
+         "x": 1800,
+         "y": 1050
+        }
+       }
+      }
+     ]
     }
    ]
   }

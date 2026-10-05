@@ -17,6 +17,7 @@ import { Instagram } from './pages/Instagram'
 import { InvoiceEditor } from './pages/Invoices'
 import { Pipeline } from './pages/Pipeline'
 import { Projects } from './pages/Projects'
+import { Prospection } from './pages/Prospection'
 import { SettingsPage } from './pages/Settings'
 import { Tasks } from './pages/Tasks'
 
@@ -47,6 +48,7 @@ function Workspace() {
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="pipeline" element={<Pipeline />} />
+        <Route path="prospection" element={<Prospection />} />
         <Route path="clients" element={<Clients />} />
         <Route path="clients/:id" element={<ClientDetail />} />
         <Route path="projets" element={<Projects />} />

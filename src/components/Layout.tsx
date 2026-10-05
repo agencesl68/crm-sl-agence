@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   AtSign, Building2, CheckSquare, FileText, FolderKanban, Kanban, Landmark, LayoutDashboard, LogOut, Menu,
-  Settings, X, type LucideIcon,
+  Send, Settings, X, type LucideIcon,
 } from 'lucide-react'
 import { isoDay } from '../lib/format'
+import { queue } from '../lib/prospection'
 import { isOverdue } from '../lib/selectors'
 import { useStore } from '../lib/store'
 import { CLOUD, DEMO, LOGO } from '../lib/env'
@@ -31,6 +32,7 @@ export function Layout() {
   const nav: NavItem[] = [
     { to: '/', label: 'Tableau de bord', icon: LayoutDashboard },
     { to: '/pipeline', label: 'Pipeline', icon: Kanban, badge: data.deals.filter((d) => d.stage === 'nouveau').length },
+    { to: '/prospection', label: 'Prospection', icon: Send, badge: queue(data.prospects, today).length },
     { to: '/clients', label: 'Clients', icon: Building2 },
     { to: '/projets', label: 'Projets', icon: FolderKanban },
     { to: '/documents', label: 'Facturation', icon: FileText, badge: data.qonto_invoices.filter(isOverdue).length },

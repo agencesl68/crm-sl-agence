@@ -15,6 +15,13 @@ Dossier **CRM SL Agence** dans Make.
 4. Le CRM range la réponse dans Firestore (mêmes règles que la version claude.ai : dédoublonnage, rattachement
    des factures aux clients).
 
+5. Prospection (onglet Prospection du CRM) :
+   - `site` : lit la page d'accueil du site d'un prospect (`site`) et renvoie `texte`, ses 4 000 premiers caractères
+     sans balises. En cas d'échec, `texte` est vide et le mail est rédigé sans le site.
+   - `rediger` : envoie `prompt` à l'API Claude (modèle `claude-haiku-4-5`) et renvoie `texte`, la réponse brute.
+     **La clé API Anthropic se colle dans le module HTTP « api.anthropic.com » (en-tête `x-api-key`), jamais dans
+     le dépôt** : le plan contient `COLLER_ICI_LA_CLE_API_ANTHROPIC` à la place.
+
 Le CRM appelle la passerelle à l'ouverture du tableau de bord (demandes toutes les 10 min, Qonto toutes les
 15 min par navigateur), avec les boutons « Synchroniser Qonto » et « Demandes du site », et à chaque e-mail.
 
@@ -31,3 +38,12 @@ Chaque scénario est « à la demande » : la page du CRM l'exécute et lit sa s
 
 À venir, dès que les connexions sont autorisées : création des clients et factures dans Qonto (connexion « Qonto
 facturation »), opérations bancaires, statistiques et publication Instagram.
+
+## Prospection par e-mail : mise en route
+
+1. console.anthropic.com → créer une clé API et ajouter quelques euros de crédit (compter environ un centime par
+   premier mail rédigé ; les relances ne passent pas par Claude).
+2. Dans Make, scénario **CRM - Passerelle du site** : ajouter les deux routes `site` et `rediger` du plan
+   `passerelle.blueprint.json` (ou réimporter le plan), coller la clé dans l'en-tête `x-api-key`, enregistrer.
+3. Les e-mails partent de la même connexion Gmail que les autres envois du CRM. Pour envoyer depuis une adresse
+   dédiée à la prospection, il suffira de changer la connexion du module Gmail.
