@@ -150,6 +150,8 @@ export interface Settings {
   weather_city: string; weather_lat: number; weather_lon: number
   followup_enabled: boolean; followup_delays: number[]; followup_mode: 'brouillon' | 'envoi'
   email_signature: string
+  /** Recherche automatique de prospects : cibles cochées, départements (vide : France entière), note minimale, plafond quotidien. */
+  prospect_targets: Cible[]; prospect_departments: string[]; prospect_min_score: number; prospect_daily_checks: number
 }
 
 export interface OutboxItem {
@@ -180,6 +182,20 @@ export interface Prospect {
   /** Écarté de la file jusqu'à cette date (AAAA-MM-JJ). */
   snooze_until: string | null
   error: string | null; deal_id: string | null; batch: string | null; created_at: string
+  /** Recherche automatique : SIREN de la base officielle, pour ne jamais vérifier deux fois la même entreprise. */
+  siren: string | null
+  /** « auto » : trouvé par la recherche automatique ; « import » : fichier CSV. */
+  source: 'auto' | 'import'
+  /** Analyse de Claude : pertinence de 0 à 10, raison en une phrase, indices concrets trouvés sur le site. */
+  score: number | null; reason: string | null; signals: string[]
+}
+
+/** Entreprise vérifiée puis écartée par la recherche automatique (une ligne par SIREN, identifiant = SIREN). */
+export interface ProspectReject {
+  id: string; siren: string; name: string; city: string | null; cible: Cible
+  /** Pourquoi : sans site, sans email, peu pertinent, déjà connu. */
+  kind: 'site' | 'email' | 'pertinence' | 'connu'
+  reason: string; website: string | null; created_at: string
 }
 
 export interface Tables {
@@ -208,6 +224,7 @@ export interface Tables {
   settings: Settings[]
   outbox: OutboxItem[]
   prospects: Prospect[]
+  prospect_rejects: ProspectReject[]
 }
 export type TableName = keyof Tables
 export type Row<T extends TableName> = Tables[T][number]

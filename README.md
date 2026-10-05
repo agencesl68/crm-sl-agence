@@ -40,9 +40,39 @@ cabinet comptable, autre), puis chaque matin : « Préparer les mails du jour »
 
 - Séquence fixe de 3 messages : premier mail (J0), relance avec un exemple concret (J+4), dernier message (J+9).
   Les modèles sont dans `src/lib/prospection.ts`.
-- Seuls l'objet et la phrase d'accroche du premier mail sont rédigés par Claude, à partir du site et des
-  informations du fichier ; consigne stricte de ne rien inventer. Sans Claude, une accroche de secours est utilisée.
+- Prospect importé : seuls l'objet et la phrase d'accroche du premier mail sont rédigés par Claude, à partir du site
+  et des informations du fichier ; consigne stricte de ne rien inventer. Sans Claude, une accroche de secours est utilisée.
 - Plafond de 20 envois par jour, tous associés confondus (`DAILY_LIMIT`). Les relances passent en premier.
 - Une adresse déjà connue (prospect ou contact client) n'est jamais importée deux fois. « Ne plus contacter » est
   définitif ; chaque message propose de répondre « stop ».
 - « A répondu » crée l'entreprise, le contact et un lead « Contacté » (source Prospection) dans le pipeline.
+
+### Recherche automatique (version GitHub)
+
+Bouton **« Trouver les prospects du jour »** : le CRM trouve seul de nouveaux prospects et prépare leur premier mail ;
+il ne reste qu'à relire et envoyer. Pour chaque entreprise :
+
+1. **Base officielle des entreprises** (API Recherche d'entreprises, gratuite, appelée directement par le navigateur) :
+   entreprises actives, 1 à 49 salariés (plus les indépendants pour la gestion de patrimoine et le courtage),
+   département et page tirés au hasard. Filtres par cible dans `CIBLES` (`src/lib/prospection.ts`, champ `recherche`).
+2. **Site officiel** : Claude (`claude-haiku-4-5`) avec la recherche web, 2 recherches au plus, annuaires exclus ;
+   le site n'est retenu que si la confiance est d'au moins 7/10 et qu'il figure dans les résultats.
+3. **Lecture du site** par la passerelle Make : accueil, puis jusqu'à 3 pages (contact, mentions légales, à propos,
+   services, recrutement).
+4. **E-mail** cherché dans le code du CRM (`extractEmails`, `src/lib/recherche.ts`) : adresse d'un dirigeant, autre
+   adresse nominative, contact@/accueil@/info@, puis messagerie grand public présentée comme celle de l'entreprise.
+   Jamais d'adresse devinée ; adresses d'agences web, d'hébergeurs et techniques exclues.
+5. **Analyse et rédaction** par Claude : note de pertinence, raison, signaux, objet et corps du mail (80 à 120 mots).
+   Le CRM ajoute « Bonjour {prénom}, » (seulement si l'adresse est celle d'un dirigeant), la signature et la ligne « stop ».
+
+Entreprise sans site, sans email ou notée sous le minimum : rangée dans l'onglet **Écartés** (table `prospect_rejects`),
+jamais revérifiée ni repayée ; « Remettre en file » la revérifie sans note minimale, avec un site ou un e-mail donné à la main.
+
+- La place du jour vaut `DAILY_LIMIT` moins les envois du jour, les brouillons en attente et la file (relances d'abord).
+- Réglages partagés dans le panneau « Recherche automatique » : cibles (gestion de patrimoine et formation par défaut),
+  zone (France entière ou départements), note minimale (6), plafond d'entreprises vérifiées par jour (60).
+- Une panne (réseau, Make, Claude) fait passer à l'entreprise suivante ; 5 erreurs d'affilée arrêtent la recherche.
+- Sur chaque brouillon, « Pourquoi ce prospect » montre la note, la raison, les signaux et le lien du site ;
+  « Nouvelle accroche » relance l'analyse.
+- Mode démo : 3 prospects fictifs, sans aucun appel réseau. Version claude.ai : non proposée (il faut la passerelle).
+- Tests des fonctions pures (e-mails, pages, nettoyage du HTML, réponses de Claude) : `npm test`.

@@ -1,17 +1,22 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Ban, Clock, Mail, MailCheck, Reply, Send, Sparkles, Trash2, Upload, Users } from 'lucide-react'
+import { Ban, Clock, ExternalLink, Mail, MailCheck, Reply, RotateCcw, Search, Send, Settings2, Sparkles, Square, Trash2, Upload, Users } from 'lucide-react'
 import { ask } from '../components/Confirm'
 import { Badge, Button, Card, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Tabs, Textarea, useAction } from '../components/ui'
+import { DEMO } from '../lib/env'
 import { addDays, fmtDate, isoDay } from '../lib/format'
 import { GATEWAY_READY, MAKE_READY } from '../lib/make'
 import {
-  CIBLE_IDS, CIBLES, DAILY_LIMIT, isDue, nextDue, queue, SEQUENCE_LENGTH, sentToday, stepLabel,
-  useConvert, useImportProspects, usePrepareDrafts, useRedraft, useSendDraft,
+  AUTO_CIBLES, checkedToday, CIBLE_IDS, CIBLES, DAILY_LIMIT, isDue, nextDue, queue, roomToday, SEQUENCE_LENGTH, sentToday, stepLabel,
+  useAutoSearch, useConvert, useImportProspects, usePrepareDrafts, useRedraft, useRequeue, useSendDraft,
 } from '../lib/prospection'
+import { parseDepartements } from '../lib/recherche'
 import { useStore } from '../lib/store'
-import type { Cible, Prospect, ProspectStatus } from '../lib/types'
+import type { Cible, Prospect, ProspectReject, ProspectStatus, Settings } from '../lib/types'
 import type { Tone } from '../lib/constants'
+
+/** La recherche automatique passe par la passerelle Make (version GitHub) ; la démo la simule. */
+const AUTO_READY = GATEWAY_READY || DEMO
 
 const STEP_NAME = ['Premier mail', 'Relance', 'Dernier message']
 
@@ -24,9 +29,10 @@ function statusTone(p: Prospect): Tone {
 
 export function Prospection() {
   const { data } = useStore()
-  const [tab, setTab] = useState<'jour' | 'liste'>('jour')
+  const [tab, setTab] = useState<'jour' | 'liste' | 'ecartes'>('jour')
   const [importing, setImporting] = useState(false)
   const { prepare, progress } = usePrepareDrafts()
+  const auto = useAutoSearch()
   const send = useSendDraft()
   const run = useAction()
 
@@ -53,7 +59,10 @@ export function Prospection() {
     <>
       <PageHeader title="Prospection" subtitle={`${sent} / ${DAILY_LIMIT} e-mails envoyés aujourd’hui`}>
         <Button icon={Upload} onClick={() => setImporting(true)}>Importer</Button>
-        <Button variant="primary" icon={Sparkles} disabled={!!progress} onClick={() => void prepare()}>
+        {AUTO_READY && (auto.progress
+          ? <Button icon={Square} onClick={auto.stop}>Arrêter ({auto.progress.checked} vérifiées, {auto.progress.kept} / {auto.progress.target})</Button>
+          : <Button variant="primary" icon={Search} disabled={!!progress} onClick={() => void auto.start()}>Trouver les prospects du jour</Button>)}
+        <Button variant={AUTO_READY ? 'secondary' : 'primary'} icon={Sparkles} disabled={!!progress || !!auto.progress} onClick={() => void prepare()}>
           {progress ? `Rédaction ${progress.done} / ${progress.total}` : 'Préparer les mails du jour'}
         </Button>
       </PageHeader>
@@ -63,6 +72,8 @@ export function Prospection() {
           Make n’est pas branché ici : les e-mails sont enregistrés dans le CRM mais ne partent pas réellement.
         </p>
       )}
+
+      <AutoPanel auto={auto} />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat icon={Send} label="Envoyés aujourd’hui" value={`${sent} / ${DAILY_LIMIT}`} />
@@ -75,6 +86,7 @@ export function Prospection() {
         <Tabs value={tab} onChange={setTab} tabs={[
           { id: 'jour', label: 'À envoyer', count: drafts.length },
           { id: 'liste', label: 'Tous les prospects', count: prospects.length },
+          { id: 'ecartes', label: 'Écartés', count: data.prospect_rejects.length },
         ]} />
       </div>
 
@@ -83,7 +95,9 @@ export function Prospection() {
           <Card>
             <Empty icon={Mail} title={prospects.length === 0 ? 'Aucun prospect pour l’instant' : waiting ? `${waiting} prospect${waiting > 1 ? 's' : ''} à contacter aujourd’hui` : 'Rien à envoyer aujourd’hui'}>
               {prospects.length === 0
-                ? <>Importez un fichier de prospects (CSV), puis cliquez sur « Préparer les mails du jour ». Chaque matin : préparer, relire, envoyer.</>
+                ? AUTO_READY
+                  ? <>Cliquez sur « Trouver les prospects du jour » : le CRM cherche des entreprises, lit leur site, trouve leur e-mail et prépare un premier mail. Chaque matin : trouver, relire, envoyer.</>
+                  : <>Importez un fichier de prospects (CSV), puis cliquez sur « Préparer les mails du jour ». Chaque matin : préparer, relire, envoyer.</>
                 : waiting
                   ? <>Cliquez sur « Préparer les mails du jour » : {GATEWAY_READY ? 'Claude lit le site de chaque entreprise et' : 'Claude'} rédige l’objet et l’accroche du premier mail, les relances partent du modèle.</>
                   : <>Les relances reviendront toutes seules à J+4 et J+9. Pensez à importer de nouveaux prospects pour garder le rythme.</>}
@@ -102,7 +116,7 @@ export function Prospection() {
             </div>
           </>
         )
-      ) : <ProspectTable prospects={prospects} />}
+      ) : tab === 'liste' ? <ProspectTable prospects={prospects} /> : <RejectTable rejects={data.prospect_rejects} />}
 
       {importing && <ImportModal onClose={() => setImporting(false)} />}
     </>
@@ -142,6 +156,7 @@ function DraftCard({ prospect: p, limitReached }: { prospect: Prospect; limitRea
       }
       action={<span className="flex gap-1.5"><Badge tone="violet">{CIBLES[p.cible].label}</Badge><Badge tone={p.step === 0 ? 'sky' : 'amber'}>{STEP_NAME[p.step] ?? 'Message'}</Badge></span>}
     >
+      {(p.source === 'auto' || p.score !== null) && <WhyLine prospect={p} />}
       {p.error && <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">Accroche non personnalisée ({p.error}). Ajoutez une phrase sur l’entreprise ou cliquez sur « Nouvelle accroche ».</p>}
       <div className="space-y-3">
         <Field label="Objet">{(id) => <Input id={id} value={subject} onChange={(e) => setSubject(e.target.value)} onBlur={save} />}</Field>
@@ -156,6 +171,191 @@ function DraftCard({ prospect: p, limitReached }: { prospect: Prospect; limitRea
         <Button variant="primary" icon={Send} disabled={busy || limitReached || !subject.trim() || !body.trim()} onClick={() => act(() => send(p, { subject, body }))}>Envoyer</Button>
       </div>
     </Card>
+  )
+}
+
+/** « Pourquoi ce prospect » : note, raison et signaux de l'analyse, et le site pour vérifier en un clic. */
+function WhyLine({ prospect: p }: { prospect: Prospect }) {
+  return (
+    <div className="mb-3 space-y-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-medium text-slate-800">Pourquoi ce prospect</span>
+        {p.score !== null && <Badge tone={p.score >= 8 ? 'emerald' : 'sky'}>{p.score} / 10</Badge>}
+        {p.reason && <span>{p.reason}</span>}
+        {p.website && <a href={p.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-link hover:underline">Voir le site<ExternalLink size={12} aria-hidden /></a>}
+      </p>
+      {p.signals.length > 0 && <div className="flex flex-wrap gap-1">{p.signals.map((s) => <Badge key={s} tone="violet">{s}</Badge>)}</div>}
+    </div>
+  )
+}
+
+/** Panneau « Recherche automatique » : réglages (enregistrés pour les deux associés), progression, bilan. */
+function AutoPanel({ auto }: { auto: ReturnType<typeof useAutoSearch> }) {
+  const { data, settings, update } = useStore()
+  const run = useAction()
+  const [open, setOpen] = useState(false)
+  const [deps, setDeps] = useState(settings.prospect_departments.join(', '))
+  const save = (patch: Partial<Settings>) => run(() => update('settings', true, patch))
+  const checked = checkedToday(data.prospects, data.prospect_rejects)
+  const room = roomToday(data.prospects)
+  const zone = settings.prospect_departments.length ? `départements ${settings.prospect_departments.join(', ')}` : 'France entière'
+  const targets = settings.prospect_targets.filter((c) => AUTO_CIBLES.includes(c))
+  const progress = auto.progress
+
+  function toggle(c: Cible, on: boolean) {
+    void save({ prospect_targets: on ? [...targets, c] : targets.filter((x) => x !== c) })
+  }
+  function saveDeps(text: string) {
+    const list = parseDepartements(text)
+    setDeps(list.join(', '))
+    void save({ prospect_departments: list })
+  }
+  const saveNumber = (key: 'prospect_min_score' | 'prospect_daily_checks', value: string, min: number, max: number) => {
+    const n = Math.round(Number(value))
+    if (Number.isFinite(n) && n !== settings[key]) void save({ [key]: Math.min(max, Math.max(min, n)) })
+  }
+
+  return (
+    <Card className="mb-4" title="Recherche automatique" action={<Button small icon={Settings2} onClick={() => setOpen(!open)}>{open ? 'Fermer' : 'Réglages'}</Button>}>
+      {!AUTO_READY && (
+        <p className="mb-3 text-sm text-fg-muted">
+          La recherche automatique fonctionne dans la version GitHub du CRM (agencesl68.github.io), reliée à la passerelle Make qui lit les sites et interroge Claude. Les réglages ci-dessous restent partagés.
+        </p>
+      )}
+      <p className="text-sm text-slate-700">
+        {targets.length ? targets.map((c) => CIBLES[c].label).join(', ') : 'Aucune cible cochée'} · {zone} · note minimale {settings.prospect_min_score} / 10
+      </p>
+      <p className="mt-0.5 text-xs text-slate-500">
+        {checked} / {settings.prospect_daily_checks} entreprises vérifiées aujourd’hui · place pour {room} nouveau{room > 1 ? 'x' : ''} prospect{room > 1 ? 's' : ''} (les relances passent en premier)
+      </p>
+
+      {progress && (
+        <div className="mt-3" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="font-medium text-slate-900">Vérifiées {progress.checked}, retenues {progress.kept} / {progress.target}</span>
+            <Button small icon={Square} onClick={auto.stop}>Arrêter</Button>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-vert transition-all" style={{ width: `${Math.min(100, (progress.kept / Math.max(1, progress.target)) * 100)}%` }} />
+          </div>
+          <p className="mt-1 truncate text-xs text-slate-500">{progress.step}</p>
+        </div>
+      )}
+      {!progress && auto.last && <p className="mt-3 text-sm font-medium text-slate-900">{auto.last}</p>}
+
+      {open && (
+        <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
+          <fieldset>
+            <legend className="mb-1 block text-sm font-medium text-slate-700">Cibles</legend>
+            <div className="space-y-1.5">
+              {AUTO_CIBLES.map((c) => (
+                <label key={c} className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={targets.includes(c)} onChange={(e) => toggle(c, e.target.checked)} className="h-4 w-4 accent-vert" />
+                  {CIBLES[c].label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="space-y-4">
+            <fieldset>
+              <legend className="mb-1 block text-sm font-medium text-slate-700">Zone</legend>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="radio" name="zone" checked={!settings.prospect_departments.length} onChange={() => { setDeps(''); void save({ prospect_departments: [] }) }} className="h-4 w-4 accent-vert" />
+                France entière
+              </label>
+              <label className="mt-1.5 flex items-center gap-2 text-sm text-slate-700">
+                <input type="radio" name="zone" checked={!!settings.prospect_departments.length} onChange={() => saveDeps(deps || '68')} className="h-4 w-4 accent-vert" />
+                Départements
+              </label>
+              <Input aria-label="Départements" className="mt-1.5" placeholder="68, 67, 90" value={deps} onChange={(e) => setDeps(e.target.value)} onBlur={(e) => saveDeps(e.target.value)} />
+            </fieldset>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Note minimale" hint="Sur 10, 6 par défaut.">
+                {(id) => <Input id={id} type="number" min={0} max={10} defaultValue={settings.prospect_min_score} onBlur={(e) => saveNumber('prospect_min_score', e.target.value, 0, 10)} />}
+              </Field>
+              <Field label="Vérifications par jour" hint="Plafond du coût, 60 par défaut.">
+                {(id) => <Input id={id} type="number" min={1} max={500} defaultValue={settings.prospect_daily_checks} onBlur={(e) => saveNumber('prospect_daily_checks', e.target.value, 1, 500)} />}
+              </Field>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+const REJECT_LABEL: Record<ProspectReject['kind'], string> = { site: 'Sans site', email: 'Sans email', pertinence: 'Peu pertinent', connu: 'Déjà connu' }
+
+/** Onglet « Écartés » : entreprises vérifiées puis écartées, jamais revérifiées sauf remise en file. */
+function RejectTable({ rejects }: { rejects: ProspectReject[] }) {
+  const [requeue, setRequeue] = useState<ProspectReject | null>(null)
+  const [kind, setKind] = useState('')
+  const rows = rejects.filter((r) => !kind || r.kind === kind)
+  return (
+    <Card flush title={`${rows.length} entreprise${rows.length > 1 ? 's' : ''} écartée${rows.length > 1 ? 's' : ''}`} action={
+      <Select aria-label="Raison" value={kind} onChange={(e) => setKind(e.target.value)} className="!h-9 !w-48">
+        <option value="">Toutes les raisons</option>
+        {Object.entries(REJECT_LABEL).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>
+    }>
+      {rows.length === 0 ? <Empty icon={Ban} title="Aucune entreprise écartée">La recherche automatique range ici les entreprises sans site, sans email ou peu pertinentes, pour ne jamais les vérifier deux fois.</Empty> : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead className="text-left text-xs text-slate-500">
+              <tr className="border-b border-slate-200">
+                <th className="px-4 py-2 font-medium">Entreprise</th>
+                <th className="px-4 py-2 font-medium">Raison</th>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((r) => (
+                <tr key={r.id} className="align-top">
+                  <td className="px-4 py-2.5">
+                    <p className="font-medium text-slate-900">{r.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {[CIBLES[r.cible]?.label, r.city, `SIREN ${r.siren}`].filter(Boolean).join(' · ')}
+                      {r.website && <> · <a href={r.website} target="_blank" rel="noreferrer" className="text-link hover:underline">site</a></>}
+                    </p>
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-700"><Badge tone={r.kind === 'pertinence' ? 'amber' : 'slate'}>{REJECT_LABEL[r.kind]}</Badge><p className="mt-1 text-xs text-slate-500">{r.reason}</p></td>
+                  <td className="px-4 py-2.5 text-slate-700">{fmtDate(r.created_at)}</td>
+                  <td className="px-4 py-2.5 text-right"><Button small icon={RotateCcw} onClick={() => setRequeue(r)}>Remettre en file</Button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {requeue && <RequeueModal reject={requeue} onClose={() => setRequeue(null)} />}
+    </Card>
+  )
+}
+
+function RequeueModal({ reject: r, onClose }: { reject: ProspectReject; onClose: () => void }) {
+  const requeue = useRequeue()
+  const [website, setWebsite] = useState(r.website ?? '')
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function submit() {
+    setBusy(true)
+    const ok = await requeue(r, { website, email })
+    setBusy(false)
+    if (ok) onClose()
+  }
+  return (
+    <Modal title={`Remettre ${r.name} en file`} onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600">Écartée : {r.reason}. L’entreprise est revérifiée sans note minimale ; indiquez le site ou l’adresse e-mail si la recherche les a manqués.</p>
+        <Field label="Site internet" hint="Laisser vide pour le chercher à nouveau.">{(id) => <Input id={id} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />}</Field>
+        <Field label="Adresse e-mail" hint="Facultatif : seulement une adresse publiée par l’entreprise.">{(id) => <Input id={id} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
+        <div className="flex justify-end gap-2">
+          <Button onClick={onClose}>Annuler</Button>
+          <Button variant="primary" icon={RotateCcw} disabled={busy} onClick={() => void submit()}>{busy ? 'Vérification…' : 'Vérifier et préparer le brouillon'}</Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

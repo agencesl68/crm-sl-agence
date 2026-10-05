@@ -30,6 +30,7 @@ const TABLE_CONFIG: Record<TableName, { pk: string; order: string; asc: boolean 
   settings: { pk: 'id', order: 'id', asc: true },
   outbox: { pk: 'id', order: 'created_at', asc: false },
   prospects: { pk: 'id', order: 'created_at', asc: false },
+  prospect_rejects: { pk: 'id', order: 'created_at', asc: false },
 }
 const TABLE_NAMES = Object.keys(TABLE_CONFIG) as TableName[]
 
@@ -55,7 +56,8 @@ const DEFAULTS: Partial<Record<TableName, AnyRow>> = {
   outbox: { status: 'pending', kind: 'email', error: null, sent_at: null },
   instagram_messages: { handled: false, reply: null, reply_status: null },
   instagram_schedule: { status: 'brouillon', media_urls: [], error: null, post_id: null },
-  prospects: { status: 'actif', step: 0, history: [], draft_subject: null, draft_body: null, draft_step: null, snooze_until: null, error: null, deal_id: null, batch: null, website: null, city: null, job_title: null, info: null, cible: 'autre' },
+  prospects: { status: 'actif', step: 0, history: [], draft_subject: null, draft_body: null, draft_step: null, snooze_until: null, error: null, deal_id: null, batch: null, website: null, city: null, job_title: null, info: null, cible: 'autre', siren: null, source: 'import', score: null, reason: null, signals: [] },
+  prospect_rejects: { city: null, website: null },
 }
 
 // Suppressions en cascade : ce que faisaient les clés étrangères d'une base SQL
@@ -256,6 +258,7 @@ const DEFAULT_SETTINGS: Settings = {
   vat_mode: 'franchise', vat_rate: 20, quote_validity_days: 30, quote_conditions: DEFAULT_CONDITIONS, invoice_terms: DEFAULT_INVOICE_TERMS, monthly_goal: 5000,
   urssaf_rate: 24.6, vat_threshold: 37500, revenue_ceiling: 77700, weather_city: 'Friesen', weather_lat: 47.56, weather_lon: 7.15,
   followup_enabled: true, followup_delays: [3, 7, 14], followup_mode: 'brouillon', email_signature: 'Sacha et Loïc\nSL Agence — Applications métier, automatisation et IA',
+  prospect_targets: ['cgp', 'formation'], prospect_departments: [], prospect_min_score: 6, prospect_daily_checks: 60,
 }
 const MEMBER_COLORS = ['#a9c49f', '#f0a58a', '#dfe8d8', '#7fa672']
 
