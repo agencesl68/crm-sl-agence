@@ -305,6 +305,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 /** Exécute une action asynchrone : message de succès facultatif, message d'erreur systématique. */
+/** Affiche un message éphémère (comme après une action). */
+export const useToast = () => useContext(ToastContext)
+
 export function useAction() {
   const toast = useContext(ToastContext)
   return useCallback(async <T,>(fn: () => Promise<T>, success?: string): Promise<T | undefined> => {

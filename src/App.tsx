@@ -19,6 +19,7 @@ import { Pipeline } from './pages/Pipeline'
 import { Projects } from './pages/Projects'
 import { SettingsPage } from './pages/Settings'
 import { Tasks } from './pages/Tasks'
+import { Mail } from './pages/Mail'
 
 function Screen({ children }: { children: ReactNode }) {
   return <div className="flex h-full items-center justify-center p-6 text-center text-sm text-fg-muted">{children}</div>
@@ -57,6 +58,7 @@ function Workspace() {
         <Route path="tresorerie" element={<Navigate to="/finances" replace />} />
         <Route path="instagram" element={<Instagram />} />
         <Route path="taches" element={<Tasks />} />
+        <Route path="mails" element={<Mail />} />
         <Route path="reglages" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -249,9 +249,16 @@ export function demoData(): Tables {
       vat_number: null, email: null, phone: '07 67 08 19 43', website: 'slagence.fr',
       vat_mode: 'franchise', vat_rate: 20, quote_validity_days: 30, quote_conditions: DEFAULT_CONDITIONS, invoice_terms: DEFAULT_INVOICE_TERMS, monthly_goal: 5000,
       urssaf_rate: 24.6, vat_threshold: 37500, revenue_ceiling: 77700, weather_city: 'Friesen', weather_lat: 47.56, weather_lon: 7.15,
-      followup_enabled: true, followup_delays: [3, 7, 14], followup_mode: 'brouillon',
+      followup_enabled: true, followup_delays: [3, 7, 14], followup_mode: 'envoi',
+      lead_autoreply: 'envoi', payment_reminders: true, payment_delays: [3, 10, 20], notify_telegram: true, morning_brief: true, robot_paused: false,
       email_signature: 'Sacha et Loïc\nSL Agence — Applications métier, automatisation et IA\n07 67 08 19 43 · slagence.fr',
     }],
     outbox: [],
+    notifications: [
+      { id: 'n1', kind: 'lead', title: 'Nouvelle demande : Boulangerie Exemple', body: 'Site web · Réponse envoyée automatiquement.', link: '/pipeline', created_at: ago(0, 2) },
+      { id: 'n2', kind: 'paiement', title: 'Facture F-2026-004 payée', body: 'Exemple · 450,00 €', link: '/documents?onglet=factures', created_at: ago(1, 3) },
+    ],
+    sync_log: [],
+    ignored_refs: [],
   }
 }

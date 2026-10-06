@@ -4,15 +4,11 @@ import { isoDay } from './format'
 import { logSync } from './firebase'
 import { callMake, MAKE_READY } from './make'
 import { use, type SampleApi } from './runtime'
-import { useStore } from './store'
+import { refKey, useStore } from './store'
 import type { InvoiceStatus } from './types'
 
-/** Identifiant stable d'une demande : les deux associés peuvent l'importer en même temps sans doublon. */
-function refId(ref: string): string {
-  let h = 0x811c9dc5
-  for (let i = 0; i < ref.length; i++) h = Math.imul(h ^ ref.charCodeAt(i), 0x01000193)
-  return `site-${(h >>> 0).toString(36)}-${ref.length}`
-}
+/** Identifiant stable d'une demande : le robot et les deux associés peuvent l'importer sans doublon. */
+const refId = (ref: string) => `site-${refKey(ref)}`
 
 const norm = (s: unknown) => String(s ?? '').trim().toLowerCase()
 const same = (a: Record<string, unknown>, b: Record<string, unknown>) => Object.keys(b).every((k) => JSON.stringify(a[k] ?? null) === JSON.stringify(b[k] ?? null))
@@ -93,7 +89,7 @@ export function useImportLeads() {
   return useCallback((silent = false) => quiet('demandes', silent, run, async () => {
     const out = await callMake('demandes')
     const rows = Array.isArray(out.lignes) ? out.lignes as unknown[][] : []
-    const known = new Set(data.deals.map((d) => d.external_ref).filter(Boolean))
+    const known = new Set([...data.deals.map((d) => d.external_ref), ...data.ignored_refs.map((r) => r.ref)].filter(Boolean))
     const companies = [...data.companies], contacts = [...data.contacts]
     let added = 0
     for (const r of rows) {

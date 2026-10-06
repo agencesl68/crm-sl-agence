@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, AtSign, Bell, Building2, CheckSquare, CornerDownLeft, FileText, FolderKanban, Kanban, Landmark,
-  LayoutDashboard, Plus, Search, Settings, UserRound, type LucideIcon,
+  ArrowRight, AtSign, Bell, Bot, Building2, CheckSquare, CornerDownLeft, Euro, FileText, FolderKanban, Inbox, Kanban, Landmark,
+  LayoutDashboard, Mail, Plus, Search, Settings, TriangleAlert, UserRound, type LucideIcon,
 } from 'lucide-react'
-import { contactName, isoDay } from '../lib/format'
+import { ago, contactName, isoDay } from '../lib/format'
 import { followupDue, isOverdue, useLookups } from '../lib/selectors'
 import { useStore } from '../lib/store'
+import type { NotificationItem } from '../lib/types'
 import { describe, useWeather } from '../lib/weather'
+import { useToast } from './ui'
 
 const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`
 
@@ -24,6 +26,7 @@ const ACTIONS: Command[] = [
 const PAGES: Command[] = [
   { key: 'p-home', label: 'Tableau de bord', hint: 'Page', icon: LayoutDashboard, to: '/' },
   { key: 'p-pipe', label: 'Pipeline', hint: 'Page', icon: Kanban, to: '/pipeline' },
+  { key: 'p-mail', label: 'Boîte mail', hint: 'Page', icon: Mail, to: '/mails' },
   { key: 'p-cli', label: 'Clients', hint: 'Page', icon: Building2, to: '/clients' },
   { key: 'p-proj', label: 'Projets', hint: 'Page', icon: FolderKanban, to: '/projets' },
   { key: 'p-doc', label: 'Facturation', hint: 'Page', icon: FileText, to: '/documents' },
@@ -110,20 +113,46 @@ function useAlerts() {
     { n: open.filter((d) => !d.owner_id).length, one: 'lead à attribuer', many: 'leads à attribuer', to: '/pipeline' },
     { n: open.filter((d) => followupDue(d, settings)).length, one: 'relance à faire', many: 'relances à faire', to: '/pipeline' },
     { n: data.qonto_invoices.filter(isOverdue).length, one: 'facture en retard', many: 'factures en retard', to: '/documents' },
-    { n: data.tasks.filter((t) => !t.done && t.assignee_id === me?.id && !!t.due_date && t.due_date <= today).length, one: 'tâche pour aujourd’hui', many: 'tâches pour aujourd’hui', to: '/taches' },
+    { n: data.tasks.filter((t) => !t.done && (!t.assignee_id || t.assignee_id === me?.id) && !!t.due_date && t.due_date <= today).length, one: 'tâche pour aujourd’hui', many: 'tâches pour aujourd’hui', to: '/taches' },
     { n: data.instagram_messages.filter((m) => !m.handled).length, one: 'commentaire Instagram à traiter', many: 'commentaires Instagram à traiter', to: '/instagram?onglet=commentaires' },
   ].filter((a) => a.n > 0).map((a) => ({ label: plural(a.n, a.one, a.many), to: a.to }))
 }
 
-function Popover({ label, icon: Icon, dot, children }: { label: string; icon: LucideIcon; dot?: boolean; children: (close: () => void) => ReactNode }) {
+const NOTIF_ICON: Record<NotificationItem['kind'], LucideIcon> = { lead: Inbox, reponse: Mail, paiement: Euro, robot: Bot, erreur: TriangleAlert }
+const SEEN_KEY = 'crm-notifications-vues'
+const readSeen = () => { try { return localStorage.getItem(SEEN_KEY) ?? '' } catch { return '' } }
+
+/** Activité du robot : non lues depuis la dernière ouverture de la cloche, et message à l'écran à l'arrivée. */
+function useRobotNotifications() {
+  const { data } = useStore()
+  const toast = useToast()
+  const [seen, setSeen] = useState(readSeen)
+  const list = useMemo(() => [...data.notifications].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 12), [data.notifications])
+  const known = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (known.current === null) { known.current = new Set(list.map((n) => n.id)); return }
+    for (const n of list) {
+      if (!known.current.has(n.id) && Date.now() - new Date(n.created_at).getTime() < 5 * 60_000) toast(n.title)
+      known.current.add(n.id)
+    }
+  }, [list, toast])
+  const markSeen = () => {
+    const now = new Date().toISOString()
+    try { localStorage.setItem(SEEN_KEY, now) } catch { /* navigateur privé */ }
+    setSeen(now)
+  }
+  return { list, unread: list.filter((n) => n.created_at > seen).length, markSeen }
+}
+
+function Popover({ label, icon: Icon, dot, onOpen, wide, children }: { label: string; icon: LucideIcon; dot?: boolean; onOpen?: () => void; wide?: boolean; children: (close: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="relative" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setOpen(false)}>
-      <button type="button" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen(!open)} className="relative flex h-10 w-10 items-center justify-center rounded-full border border-btn-border bg-btn text-fg transition-colors hover:bg-hover">
+      <button type="button" aria-expanded={open} aria-label={label} title={label} onClick={() => { if (!open) onOpen?.(); setOpen(!open) }} className="relative flex h-10 w-10 items-center justify-center rounded-full border border-btn-border bg-btn text-fg transition-colors hover:bg-hover">
         <Icon size={17} aria-hidden />
         {dot && <span aria-hidden className="ping absolute right-2 top-2 h-2 w-2 rounded-full bg-corail" />}
       </button>
-      {open && <div className="surface pop-in absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-2xl bg-white py-1 shadow-2xl">{children(() => setOpen(false))}</div>}
+      {open && <div className={`surface pop-in absolute right-0 top-full z-30 mt-2 max-h-[75vh] overflow-y-auto rounded-2xl bg-white py-1 shadow-2xl ${wide ? 'w-[min(22rem,calc(100vw-2rem))]' : 'w-72'}`}>{children(() => setOpen(false))}</div>}
     </div>
   )
 }
@@ -133,6 +162,7 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
   const { settings } = useStore()
   const weather = useWeather(settings.weather_lat, settings.weather_lon)
   const alerts = useAlerts()
+  const robot = useRobotNotifications()
   const [now, setNow] = useState(() => new Date())
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30_000); return () => clearInterval(t) }, [])
   const w = weather ? describe(weather.code) : null
@@ -152,10 +182,32 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
           </span>
         )}
         <span className="hidden rounded-full border border-btn-border bg-btn px-3 py-2 text-sm tabular-nums md:block">{now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-        <Popover label={`Alertes : ${alerts.length}`} icon={Bell} dot={alerts.length > 0}>
-          {(close) => alerts.length === 0 ? <p className="px-4 py-3 text-sm text-slate-500">Rien à signaler.</p> : alerts.map((a) => (
-            <Link key={a.label} to={a.to} onClick={close} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">{a.label}<ArrowRight size={14} aria-hidden /></Link>
-          ))}
+        <Popover label={`Alertes : ${alerts.length}${robot.unread ? `, ${robot.unread} nouveautés` : ''}`} icon={Bell} dot={alerts.length > 0 || robot.unread > 0} onOpen={robot.markSeen} wide>
+          {(close) => (
+            <>
+              <p className="eyebrow px-4 pb-1 pt-2.5 text-slate-500">À faire</p>
+              {alerts.length === 0 ? <p className="px-4 pb-2 text-sm text-slate-500">Rien à signaler.</p> : alerts.map((a) => (
+                <Link key={a.label} to={a.to} onClick={close} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50">{a.label}<ArrowRight size={14} aria-hidden /></Link>
+              ))}
+              {robot.list.length > 0 && <p className="eyebrow mt-1 border-t border-slate-100 px-4 pb-1 pt-3 text-slate-500">Fait par le robot</p>}
+              {robot.list.map((n) => {
+                const Icon = NOTIF_ICON[n.kind] ?? Bot
+                const body = (
+                  <>
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-hover text-fg-muted"><Icon size={14} aria-hidden /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-slate-900">{n.title}</span>
+                      {n.body && <span className="line-clamp-2 block text-xs text-slate-500">{n.body}</span>}
+                    </span>
+                    <span className="shrink-0 text-[11px] text-slate-400">{ago(n.created_at)}</span>
+                  </>
+                )
+                return n.link
+                  ? <Link key={n.id} to={n.link} onClick={close} className="flex gap-3 px-4 py-2.5 hover:bg-slate-50">{body}</Link>
+                  : <div key={n.id} className="flex gap-3 px-4 py-2.5">{body}</div>
+              })}
+            </>
+          )}
         </Popover>
         <Popover label="Créer" icon={Plus}>
           {(close) => ACTIONS.map((a) => (

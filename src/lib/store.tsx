@@ -29,6 +29,9 @@ const TABLE_CONFIG: Record<TableName, { pk: string; order: string; asc: boolean 
   team_notes: { pk: 'id', order: 'id', asc: true },
   settings: { pk: 'id', order: 'id', asc: true },
   outbox: { pk: 'id', order: 'created_at', asc: false },
+  notifications: { pk: 'id', order: 'created_at', asc: false },
+  sync_log: { pk: 'id', order: 'at', asc: false },
+  ignored_refs: { pk: 'id', order: 'created_at', asc: false },
 }
 const TABLE_NAMES = Object.keys(TABLE_CONFIG) as TableName[]
 
@@ -79,6 +82,13 @@ const CASCADE: Partial<Record<TableName, { table: TableName; field: string; acti
  * appliquées en mémoire. En démo tout reste en mémoire ; en production chaque ligne modifiée
  * est recopiée dans la base partagée de l'artifact.
  */
+/** Clé courte et stable d'une référence externe (identifiant de document valide). */
+export function refKey(ref: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < ref.length; i++) h = Math.imul(h ^ ref.charCodeAt(i), 0x01000193)
+  return `${(h >>> 0).toString(36)}-${ref.length}`
+}
+
 function createBackend(initial: Tables, opts: { sink?: Sink; simulate: boolean }) {
   const db = initial as unknown as Record<TableName, AnyRow[]>
   const now = () => new Date().toISOString()
@@ -205,6 +215,12 @@ function createBackend(initial: Tables, opts: { sink?: Sink; simulate: boolean }
       const r = find(table, id)
       if (!r) return
       drop(table, r)
+      // Une demande du site supprimée n'est plus réimportée
+      if (table === 'deals' && typeof r.external_ref === 'string') {
+        const tomb = { id: `ref-${refKey(r.external_ref)}`, ref: r.external_ref, created_at: now() }
+        db.ignored_refs.push(tomb)
+        touch('ignored_refs', tomb)
+      }
       for (const c of CASCADE[table] ?? []) {
         for (const child of db[c.table].filter((x) => x[c.field] === id)) {
           if (c.action === 'delete') drop(c.table, child)
@@ -253,7 +269,8 @@ const DEFAULT_SETTINGS: Settings = {
   siret: null, ape: null, vat_number: null, email: null, phone: null, website: null,
   vat_mode: 'franchise', vat_rate: 20, quote_validity_days: 30, quote_conditions: DEFAULT_CONDITIONS, invoice_terms: DEFAULT_INVOICE_TERMS, monthly_goal: 5000,
   urssaf_rate: 24.6, vat_threshold: 37500, revenue_ceiling: 77700, weather_city: 'Friesen', weather_lat: 47.56, weather_lon: 7.15,
-  followup_enabled: true, followup_delays: [3, 7, 14], followup_mode: 'brouillon', email_signature: 'Sacha et Loïc\nSL Agence — Applications métier, automatisation et IA',
+  followup_enabled: true, followup_delays: [3, 7, 14], followup_mode: 'envoi', email_signature: 'Sacha et Loïc\nSL Agence — Applications métier, automatisation et IA',
+  lead_autoreply: 'envoi', payment_reminders: true, payment_delays: [3, 10, 20], notify_telegram: true, morning_brief: true, robot_paused: false,
 }
 const MEMBER_COLORS = ['#a9c49f', '#f0a58a', '#dfe8d8', '#7fa672']
 

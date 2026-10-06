@@ -10,3 +10,5 @@ crm
 .claude
 tsconfig.tsbuildinfo
 captures
+
+make/build

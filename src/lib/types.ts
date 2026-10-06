@@ -150,11 +150,26 @@ export interface Settings {
   weather_city: string; weather_lat: number; weather_lon: number
   followup_enabled: boolean; followup_delays: number[]; followup_mode: 'brouillon' | 'envoi'
   email_signature: string
+  /** Robot (Make) : réponse aux demandes du site, rappels de paiement, notifications, point du jour. */
+  lead_autoreply: 'envoi' | 'brouillon' | 'non'
+  payment_reminders: boolean; payment_delays: number[]
+  notify_telegram: boolean; morning_brief: boolean; robot_paused: boolean
 }
+
+/** Notification déposée par le robot (nouvelle demande, réponse d'un lead, paiement reçu…). */
+export interface NotificationItem {
+  id: string; kind: 'lead' | 'reponse' | 'paiement' | 'robot' | 'erreur'; title: string; body: string | null; link: string | null; created_at: string
+}
+
+/** Dernier passage de chaque robot ou synchronisation. */
+export interface SyncLog { id: string; ok: boolean; detail: string; at: string; by: string }
+
+/** Demande du site supprimée du CRM : elle n'est plus réimportée. */
+export interface IgnoredRef { id: string; ref: string; created_at: string }
 
 export interface OutboxItem {
   id: string; to_email: string; subject: string; body: string; kind: 'email' | 'relance'
-  deal_id: string | null; contact_id: string | null
+  deal_id: string | null; contact_id: string | null; thread_id?: string | null
   status: 'pending' | 'sent' | 'error'; error: string | null
   created_by: string | null; created_at: string; sent_at: string | null
 }
@@ -184,6 +199,9 @@ export interface Tables {
   team_notes: TeamNote[]
   settings: Settings[]
   outbox: OutboxItem[]
+  notifications: NotificationItem[]
+  sync_log: SyncLog[]
+  ignored_refs: IgnoredRef[]
 }
 export type TableName = keyof Tables
 export type Row<T extends TableName> = Tables[T][number]

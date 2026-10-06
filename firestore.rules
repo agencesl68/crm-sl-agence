@@ -15,5 +15,9 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if equipe();
     }
+    // Session du robot (Make), chiffrée : seul Make détient la clé pour la lire
+    match /robot/acces {
+      allow read: if true;
+    }
   }
 }

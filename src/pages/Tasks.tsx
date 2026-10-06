@@ -13,7 +13,7 @@ export function Tasks() {
   const today = isoDay()
 
   const tasks = data.tasks
-    .filter((t) => (!assignee || t.assignee_id === assignee) && (showDone || !t.done))
+    .filter((t) => (!assignee || t.assignee_id === assignee || !t.assignee_id) && (showDone || !t.done))
     .sort((a, b) => (a.due_date ?? '9').localeCompare(b.due_date ?? '9'))
 
   const groups: [string, Task[]][] = [

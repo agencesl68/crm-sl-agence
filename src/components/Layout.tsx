@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
-  AtSign, Building2, CheckSquare, FileText, FolderKanban, Kanban, Landmark, LayoutDashboard, LogOut, Menu,
+  AtSign, Building2, CheckSquare, FileText, FolderKanban, Kanban, Landmark, LayoutDashboard, LogOut, Mail, Menu,
   Settings, X, type LucideIcon,
 } from 'lucide-react'
 import { isoDay } from '../lib/format'
@@ -9,6 +9,8 @@ import { isOverdue } from '../lib/selectors'
 import { useStore } from '../lib/store'
 import { CLOUD, DEMO, LOGO } from '../lib/env'
 import { savePerson, signOutCloud } from '../lib/firebase'
+import { activateRobot, MAKE_READY } from '../lib/make'
+import { due } from '../lib/sync'
 import { AgendaPanel } from './AgendaPanel'
 import { CommandPalette, TopBar } from './TopBar'
 import { Avatar, IconButton } from './ui'
@@ -20,6 +22,8 @@ export function Layout() {
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const [palette, setPalette] = useState(false)
+  // Le robot (Make) travaille avec la session de l'associé connecté : on la lui confie toutes les 6 h
+  useEffect(() => { if (CLOUD && MAKE_READY && due('robot', 360)) void activateRobot().catch(() => { try { localStorage.removeItem('crm-sync-robot') } catch { /* rien */ } }) }, [])
   // ⌘K / Ctrl+K ouvre la palette de commandes depuis n'importe quel écran
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((p) => !p) } }
@@ -31,12 +35,13 @@ export function Layout() {
   const nav: NavItem[] = [
     { to: '/', label: 'Tableau de bord', icon: LayoutDashboard },
     { to: '/pipeline', label: 'Pipeline', icon: Kanban, badge: data.deals.filter((d) => d.stage === 'nouveau').length },
+    ...(MAKE_READY ? [{ to: '/mails', label: 'Boîte mail', icon: Mail }] : []),
     { to: '/clients', label: 'Clients', icon: Building2 },
     { to: '/projets', label: 'Projets', icon: FolderKanban },
     { to: '/documents', label: 'Facturation', icon: FileText, badge: data.qonto_invoices.filter(isOverdue).length },
     { to: '/finances', label: 'Finances', icon: Landmark },
     { to: '/instagram', label: 'Instagram', icon: AtSign, badge: data.instagram_messages.filter((m) => !m.handled).length },
-    { to: '/taches', label: 'Tâches', icon: CheckSquare, badge: data.tasks.filter((t) => !t.done && t.assignee_id === me?.id && !!t.due_date && t.due_date <= today).length },
+    { to: '/taches', label: 'Tâches', icon: CheckSquare, badge: data.tasks.filter((t) => !t.done && (!t.assignee_id || t.assignee_id === me?.id) && !!t.due_date && t.due_date <= today).length },
     { to: '/reglages', label: 'Réglages', icon: Settings },
   ]
   // Moi d'abord, puis mon associé

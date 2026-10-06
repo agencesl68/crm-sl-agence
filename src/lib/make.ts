@@ -1,5 +1,5 @@
 import { ARTIFACT, CLOUD } from './env'
-import { idToken } from './firebase'
+import { idToken, sessionToken } from './firebase'
 import { use, type McpApi, type McpError } from './runtime'
 
 /**
@@ -72,7 +72,13 @@ const GATEWAY_OUTPUT: Partial<Record<MakeTool, (out: Obj) => Obj>> = {
 async function viaGateway(tool: MakeTool, input: Obj): Promise<Obj> {
   const shape = GATEWAY_OUTPUT[tool]
   if (!shape) throw new Error('Ce branchement n’existe pas encore dans la version en ligne du CRM.')
-  const body = new URLSearchParams({ action: tool, token: await idToken() })
+  return shape(await gateway(tool, input))
+}
+
+/** Appel direct à la passerelle Make (boîte mail, activation du robot…) : réponse JSON brute. */
+export async function gateway(action: string, input: Obj = {}): Promise<Obj> {
+  if (!CLOUD || !GATEWAY) throw new Error('Gmail n’est branché que sur la version en ligne du CRM.')
+  const body = new URLSearchParams({ action, token: await idToken() })
   for (const [k, v] of Object.entries(input)) body.set(k, typeof v === 'string' ? v : JSON.stringify(v))
   let res: Response
   try {
@@ -81,11 +87,20 @@ async function viaGateway(tool: MakeTool, input: Obj): Promise<Obj> {
   } catch {
     throw new Error('Make ne répond pas pour le moment, réessayez dans un instant.')
   }
+  const text = await res.text()
+  // « Accepted » : le scénario n'a rien renvoyé (par exemple aucune ligne trouvée)
+  if (res.ok && text.trim() === 'Accepted') return {}
   let out: Obj | null = null
-  try { out = obj(JSON.parse(await res.text())) } catch { /* réponse non JSON */ }
+  try { out = obj(JSON.parse(text)) } catch { /* réponse non JSON */ }
   if (res.status === 403) throw new Error('Make a refusé l’accès : reconnectez-vous avec le compte Google d’un associé.')
   if (!res.ok || !out) throw new Error(typeof out?.erreur === 'string' ? out.erreur : `Make n’a pas pu traiter la demande (${res.status}).`)
-  return shape(out)
+  return out
+}
+
+/** Confie au robot la session de l'associé connecté (chiffrée par Make), pour qu'il travaille seul. */
+export async function activateRobot(): Promise<void> {
+  const refresh = sessionToken()
+  if (refresh) await gateway('robot', { refresh })
 }
 
 let mcpPromise: Promise<McpApi | null> | null = null

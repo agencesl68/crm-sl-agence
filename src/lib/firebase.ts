@@ -26,6 +26,9 @@ const store = app ? getFirestore(app) : null
 export const watchAuth = (fn: (user: User | null) => void) => (auth ? onAuthStateChanged(auth, fn) : () => {})
 export const signIn = () => signInWithPopup(auth!, new GoogleAuthProvider())
 export const signOutCloud = () => (auth ? signOut(auth) : Promise.resolve())
+/** Session longue de l'associé connecté : confiée (chiffrée) au robot pour qu'il travaille sans le CRM ouvert. */
+export const sessionToken = () => auth?.currentUser?.refreshToken ?? null
+
 /** Jeton de connexion Google, vérifié par la passerelle Make avant tout appel. */
 export const idToken = async () => {
   const token = await auth?.currentUser?.getIdToken()

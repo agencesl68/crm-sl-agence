@@ -24,7 +24,7 @@ function Tile({ label, value, hint, tone }: { label: string; value: number; hint
 export function Finances() {
   const { data, settings } = useStore()
   const syncQonto = useQontoSync()
-  useEffect(() => { if (SYNC_ENABLED && due('qonto', 15)) void syncQonto(true) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (SYNC_ENABLED && due('qonto', 60)) void syncQonto(true) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [filter, setFilter] = useState<'all' | 'credit' | 'debit'>('all')
   const f = financeSummary(data, settings)
   const updated = data.qonto_accounts.map((a) => a.updated_at).sort().at(-1)

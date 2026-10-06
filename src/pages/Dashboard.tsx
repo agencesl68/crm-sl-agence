@@ -108,8 +108,8 @@ export function Dashboard() {
   const syncQonto = useQontoSync()
   useEffect(() => {
     if (!SYNC_ENABLED) return
-    if (due('demandes', 10)) void importLeads(true)
-    if (due('qonto', 15)) void syncQonto(true)
+    if (due('demandes', 360)) void importLeads(true)
+    if (due('qonto', 60)) void syncQonto(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const today = isoDay()
   const months = lastMonths(12)
