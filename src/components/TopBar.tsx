@@ -26,7 +26,6 @@ const ACTIONS: Command[] = [
 const PAGES: Command[] = [
   { key: 'p-home', label: 'Tableau de bord', hint: 'Page', icon: LayoutDashboard, to: '/' },
   { key: 'p-pipe', label: 'Pipeline', hint: 'Page', icon: Kanban, to: '/pipeline' },
-  { key: 'p-mail', label: 'Boîte mail', hint: 'Page', icon: Mail, to: '/mails' },
   { key: 'p-cli', label: 'Clients', hint: 'Page', icon: Building2, to: '/clients' },
   { key: 'p-proj', label: 'Projets', hint: 'Page', icon: FolderKanban, to: '/projets' },
   { key: 'p-doc', label: 'Facturation', hint: 'Page', icon: FileText, to: '/documents' },

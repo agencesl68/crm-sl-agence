@@ -12,7 +12,7 @@ import { OPEN_STAGES, PROJECT_STATUSES, QUOTE_STATUS, stageLabel } from '../lib/
 import { ago, contactName, eur, eur0, fmtDate, initials } from '../lib/format'
 import { invoiceHt, useLookups } from '../lib/selectors'
 import { useStore } from '../lib/store'
-import type { Company, Contact } from '../lib/types'
+import type { Company, Contact, Project } from '../lib/types'
 import { InvoiceBadge } from './Documents'
 import { ClientBilling } from './Invoices'
 
@@ -20,6 +20,27 @@ const nullable = <T extends Record<string, string>>(form: T) =>
   Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim() || null])) as { [K in keyof T]: string | null }
 
 // ───────────────────────────── Liste ─────────────────────────────
+
+/** Projet pas encore livré : à démarrer, en cours ou en recette. */
+const isOngoing = (p: Project) => p.status === 'a_demarrer' || p.status === 'en_cours' || p.status === 'en_recette'
+
+/** « En cours » dès qu'un projet n'est pas livré ; « Client » ensuite ; « Prospect » sans projet ni facture. */
+function ClientStatus({ isClient, projects }: { isClient: boolean; projects: Project[] }) {
+  if (projects.some(isOngoing)) return <Badge tone="sky">En cours</Badge>
+  return isClient || projects.length ? <Badge tone="emerald">Client</Badge> : <Badge>Prospect</Badge>
+}
+
+/** Nombre de projets réalisés pour le client (un par devis), avec le détail par état. */
+function ProjectCount({ projects }: { projects: Project[] }) {
+  if (!projects.length) return <span className="text-slate-400">—</span>
+  const detail = PROJECT_STATUSES.map((s) => [s.label.toLowerCase(), projects.filter((p) => p.status === s.id).length] as const).filter(([, n]) => n)
+  return (
+    <span className="whitespace-nowrap">
+      <span className="font-semibold text-slate-900">{projects.length} projet{projects.length > 1 ? 's' : ''}</span>
+      <span className="block text-xs text-slate-500">{detail.map(([label, n]) => `${n} ${label}${label === 'livré' && n > 1 ? 's' : ''}`).join(' · ')}</span>
+    </span>
+  )
+}
 
 export function Clients() {
   const { data } = useStore()
@@ -41,6 +62,7 @@ export function Clients() {
       isClient: data.deals.some((d) => d.company_id === c.id && d.stage === 'gagne') || data.qonto_invoices.some((i) => i.company_id === c.id),
       lastContact: data.activities.find((a) => a.company_id === c.id)?.occurred_at ?? null,
       owners: [...new Set(data.deals.filter((d) => d.company_id === c.id && d.owner_id).map((d) => d.owner_id!))],
+      projects: data.projects.filter((p) => p.company_id === c.id),
     })), [data, q])
 
   const contacts = data.contacts.filter((p) => !q || contactName(p).toLowerCase().includes(q) || p.email?.toLowerCase().includes(q))
@@ -66,7 +88,7 @@ export function Clients() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200">
-                  <tr>{['Entreprise', 'Statut', 'Ville', 'Leads en cours', 'Suivi par', 'Dernier échange'].map((h) => <th key={h} className="eyebrow px-4 py-3 text-slate-500">{h}</th>)}<th className="eyebrow px-4 py-3 text-right text-slate-500">Facturé HT</th><th className="eyebrow px-4 py-3 text-right text-slate-500">À encaisser</th></tr>
+                  <tr>{['Entreprise', 'Statut', 'Projets', 'Ville', 'Leads en cours', 'Suivi par', 'Dernier échange'].map((h) => <th key={h} className="eyebrow px-4 py-3 text-slate-500">{h}</th>)}<th className="eyebrow px-4 py-3 text-right text-slate-500">Facturé HT</th><th className="eyebrow px-4 py-3 text-right text-slate-500">À encaisser</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {companies.map((c) => (
@@ -77,7 +99,8 @@ export function Clients() {
                           <div className="min-w-0"><Link to={`/clients/${c.id}`} className="block truncate font-semibold text-slate-900 hover:underline">{c.name}</Link><span className="text-xs text-slate-500">{c.sector ?? '—'} · {c.contacts} contact{c.contacts > 1 ? 's' : ''}</span></div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">{c.isClient ? <Badge tone="emerald">Client</Badge> : <Badge>Prospect</Badge>}</td>
+                      <td className="px-4 py-3"><ClientStatus isClient={c.isClient} projects={c.projects} /></td>
+                      <td className="px-4 py-3"><ProjectCount projects={c.projects} /></td>
                       <td className="px-4 py-3 text-slate-600">{c.city ?? '—'}</td>
                       <td className="px-4 py-3">{c.openDeals ? <Badge tone="sky">{c.openDeals}</Badge> : <span className="text-slate-400">—</span>}</td>
                       <td className="px-4 py-3"><span className="flex -space-x-1.5">{c.owners.map((o) => <Avatar key={o} profile={profile.get(o)} size={24} />)}{c.owners.length === 0 && <span className="text-slate-400">—</span>}</span></td>

@@ -121,6 +121,34 @@ function createBackend(initial: Tables, opts: { sink?: Sink; simulate: boolean }
     Object.assign(doc, { total_ht: ht, total_monthly: sum('mensuel'), total_vat: Math.round(ht * Number(doc.vat_rate)) / 100 })
     doc.total_ttc = ht + Number(doc.total_vat)
     touch('quotes', doc)
+    // Le budget du projet suit le montant de mise en place du devis
+    const project = find('projects', doc.project_id)
+    if (project && Number(project.budget) !== ht) { project.budget = ht; touch('projects', project) }
+  }
+
+  const projectName = (q: AnyRow) => String(q.title ?? '').trim() || `Projet ${String(find('companies', q.company_id)?.name ?? '')}`.trim()
+
+  /** Chaque devis a son projet : créé « À démarrer » avec le devis (ou repris du lead), puis avancé à la main. */
+  function projectForQuote(q: AnyRow) {
+    if (q.project_id && find('projects', q.project_id)) return
+    const existing = q.deal_id ? db.projects.find((p) => p.deal_id === q.deal_id) : undefined
+    const project = existing ?? {
+      id: crypto.randomUUID(), created_at: now(), ...DEFAULTS.projects, name: projectName(q), company_id: q.company_id ?? null,
+      deal_id: q.deal_id ?? null, owner_id: q.created_by ?? null, status: 'a_demarrer',
+    }
+    if (!existing) { db.projects.push(project); touch('projects', project) }
+    q.project_id = project.id
+    touch('quotes', q)
+  }
+
+  /** Devis refusé ou supprimé : son projet disparaît s'il n'a jamais démarré, sans tâche ni autre devis en jeu. */
+  function dropUnstartedProject(q: AnyRow) {
+    const project = find('projects', q.project_id)
+    if (!project || project.status !== 'a_demarrer') return
+    if (db.quotes.some((x) => x !== q && x.project_id === project.id && x.status !== 'refuse')) return
+    if (db.tasks.some((t) => t.project_id === project.id)) return
+    drop('projects', project)
+    for (const x of db.quotes.filter((x) => x.project_id === project.id)) { x.project_id = null; touch('quotes', x) }
   }
 
   function activityTouchesDeal(a: AnyRow) {
@@ -186,7 +214,7 @@ function createBackend(initial: Tables, opts: { sink?: Sink; simulate: boolean }
       touch(table, r)
       if (table === 'activities') activityTouchesDeal(r)
       if (table === 'quote_lines') totals(r.quote_id)
-      if (table === 'quotes') totals(r.id)
+      if (table === 'quotes') { projectForQuote(r); totals(r.id) }
       if (opts.simulate && table === 'invoice_requests' && r.status === 'a_envoyer') simulateInvoice(r)
       if (table === 'outbox' && r.status === 'sent') {
         addActivity({ type: r.kind === 'relance' ? 'relance' : 'email_envoye', subject: r.subject, body: r.body, deal_id: r.deal_id ?? null, contact_id: r.contact_id ?? null, author_id: r.created_by ?? null, company_id: find('contacts', r.contact_id)?.company_id ?? null })
@@ -201,7 +229,15 @@ function createBackend(initial: Tables, opts: { sink?: Sink; simulate: boolean }
       if (table === 'deals' && patch.stage && patch.stage !== r.stage) {
         Object.assign(r, { followup_count: 0, last_activity_at: now(), closed_at: patch.stage === 'gagne' || patch.stage === 'perdu' ? now() : null })
       }
+      const before = { ...r }
       Object.assign(r, patch)
+      if (table === 'quotes') {
+        // Le projet du devis suit son objet et son client tant qu'on ne l'a pas renommé à la main
+        const project = find('projects', r.project_id)
+        if (project && ('title' in patch || 'company_id' in patch) && project.name === projectName(before)) { project.name = projectName(r); touch('projects', project) }
+        if (project && patch.company_id && project.status === 'a_demarrer') { project.company_id = patch.company_id; touch('projects', project) }
+        if (patch.status === 'refuse') dropUnstartedProject(r)
+      }
       if (table === 'team_notes') r.updated_at = now()
       touch(table, r)
       if (table === 'quote_lines') totals(r.quote_id)
@@ -215,6 +251,7 @@ function createBackend(initial: Tables, opts: { sink?: Sink; simulate: boolean }
       const r = find(table, id)
       if (!r) return
       drop(table, r)
+      if (table === 'quotes') dropUnstartedProject(r)
       // Une demande du site supprimée n'est plus réimportée
       if (table === 'deals' && typeof r.external_ref === 'string') {
         const tomb = { id: `ref-${refKey(r.external_ref)}`, ref: r.external_ref, created_at: now() }

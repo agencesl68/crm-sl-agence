@@ -32,10 +32,11 @@ export function Projects() {
         renderCard={(p) => {
           const open = data.tasks.filter((t) => t.project_id === p.id && !t.done).length
           const late = !!p.due_date && p.due_date < isoDay() && p.status !== 'livre' && p.status !== 'maintenance'
+          const quote = data.quotes.find((q) => q.project_id === p.id)
           return (
             <>
               <p className="text-sm font-medium leading-snug text-slate-900">{p.name}</p>
-              {p.company_id && <p className="text-xs text-slate-500">{company.get(p.company_id)?.name}</p>}
+              {(p.company_id || quote) && <p className="text-xs text-slate-500">{[p.company_id && company.get(p.company_id)?.name, quote && `Devis ${quote.number ?? 'brouillon'}`].filter(Boolean).join(' · ')}</p>}
               <div className="mt-2 flex items-center justify-between gap-2 text-xs">
                 <span className={late ? 'font-semibold text-rose-700' : 'text-slate-500'}>{p.due_date ? `Livraison ${fmtDate(p.due_date)}` : 'Sans échéance'}</span>
                 <span className="flex items-center gap-2">

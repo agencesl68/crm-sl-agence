@@ -64,7 +64,7 @@ candidats.forEach((c, i) => {
     vus.add(contact.id)
     ops.push(ecrireFiche('tasks', fiche('tasks', { title: `Répondre à ${nom} : ${court(m.subject, 60)}`, due_date: jour(), deal_id: deal?.id ?? null, company_id: contact.company_id ?? null })))
   }
-  ops.push(notif('reponse', `${nom} a écrit`, court(m.subject, 120), deal ? `/pipeline?lead=${deal.id}` : '/mails'))
+  ops.push(notif('reponse', `${nom} a écrit`, court(m.subject, 120), deal ? `/pipeline?lead=${deal.id}` : contact.company_id ? `/clients/${contact.company_id}` : '/clients'))
   lignes.push(`📩 <b>${tg(nom)}</b>${deal ? ` (${tg(court(deal.title, 60))})` : ''}\n${tg(court(m.subject, 100))}\n<i>${tg(court(sansCitation(m.body) || m.snippet, 220))}</i>`)
 })
 const n = crees.filter(Boolean).length
