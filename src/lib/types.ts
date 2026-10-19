@@ -167,6 +167,19 @@ export interface SyncLog { id: string; ok: boolean; detail: string; at: string; 
 /** Demande du site supprimée du CRM : elle n'est plus réimportée. */
 export interface IgnoredRef { id: string; ref: string; created_at: string }
 
+/** Prospect démarché (appel, mail), importé d'un fichier Excel : la couleur de la ligne donne sa colonne. */
+export type ProspectColor = 'vert' | 'orange' | 'rouge'
+export interface Prospect {
+  id: string; company: string; sector: string | null; size: string | null; address: string | null; city: string | null
+  contact_name: string | null; email: string | null; phone: string | null; interest: string | null; notes: string | null
+  contacted_on: string | null; followup_on: string | null
+  /** vert : rendez-vous, appel ou mail demandé ; orange : pas de réponse ; rouge : refus. */
+  color: ProspectColor
+  /** Lead créé dans le pipeline depuis ce prospect. */
+  deal_id: string | null
+  created_at: string; updated_at: string
+}
+
 export interface OutboxItem {
   id: string; to_email: string; subject: string; body: string; kind: 'email' | 'relance'
   deal_id: string | null; contact_id: string | null; thread_id?: string | null
@@ -202,6 +215,7 @@ export interface Tables {
   notifications: NotificationItem[]
   sync_log: SyncLog[]
   ignored_refs: IgnoredRef[]
+  prospects: Prospect[]
 }
 export type TableName = keyof Tables
 export type Row<T extends TableName> = Tables[T][number]

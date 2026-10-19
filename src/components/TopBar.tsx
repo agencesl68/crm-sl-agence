@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, AtSign, Bell, Bot, Building2, CheckSquare, CornerDownLeft, Euro, FileText, FolderKanban, Inbox, Kanban, Landmark,
+  ArrowRight, AtSign, Bell, Bot, Building2, CheckSquare, CornerDownLeft, Euro, FileText, FolderKanban, Inbox, Kanban, Landmark, Target,
   LayoutDashboard, Mail, Plus, Search, Settings, TriangleAlert, UserRound, type LucideIcon,
 } from 'lucide-react'
 import { ago, contactName, isoDay } from '../lib/format'
@@ -26,6 +26,7 @@ const ACTIONS: Command[] = [
 const PAGES: Command[] = [
   { key: 'p-home', label: 'Tableau de bord', hint: 'Page', icon: LayoutDashboard, to: '/' },
   { key: 'p-pipe', label: 'Pipeline', hint: 'Page', icon: Kanban, to: '/pipeline' },
+  { key: 'p-prosp', label: 'Prospects', hint: 'Page', icon: Target, to: '/prospects' },
   { key: 'p-cli', label: 'Clients', hint: 'Page', icon: Building2, to: '/clients' },
   { key: 'p-proj', label: 'Projets', hint: 'Page', icon: FolderKanban, to: '/projets' },
   { key: 'p-doc', label: 'Facturation', hint: 'Page', icon: FileText, to: '/documents' },

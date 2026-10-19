@@ -260,5 +260,11 @@ export function demoData(): Tables {
     ],
     sync_log: [],
     ignored_refs: [],
+    prospects: [
+      { id: 'pr1', company: 'Étude Exemple Notaires', sector: 'Notaire', size: 'TPE', address: '3 rue du Miroir', city: '68100 Mulhouse', contact_name: 'Maître Exemple', email: 'contact@etude-exemple.fr', phone: null, interest: 'Fort', notes: 'Rendez-vous jeudi 10 h.', contacted_on: day(-3), followup_on: null, color: 'vert', deal_id: null, created_at: ago(5), updated_at: ago(3) },
+      { id: 'pr2', company: 'Cabinet dentaire Exemple', sector: 'Médecins dentistes', size: 'TPE', address: '28 boulevard Gambetta', city: '68100 Mulhouse', contact_name: 'Laura', email: 'contact@dentaire-exemple.fr', phone: null, interest: null, notes: null, contacted_on: day(-6), followup_on: day(1), color: 'orange', deal_id: null, created_at: ago(8), updated_at: ago(6) },
+      { id: 'pr3', company: 'Agence Exemple Immobilier', sector: 'Immobilier', size: 'PME', address: null, city: '68100 Mulhouse', contact_name: null, email: 'mulhouse@agence-exemple.fr', phone: null, interest: null, notes: null, contacted_on: day(-6), followup_on: null, color: 'orange', deal_id: null, created_at: ago(8), updated_at: ago(6) },
+      { id: 'pr4', company: 'Kiné Exemple', sector: 'Kinésithérapeutes', size: 'TPE', address: null, city: '68100 Mulhouse', contact_name: null, email: null, phone: null, interest: null, notes: 'Déjà équipé, pas intéressé.', contacted_on: day(-10), followup_on: null, color: 'rouge', deal_id: null, created_at: ago(12), updated_at: ago(10) },
+    ],
   }
 }

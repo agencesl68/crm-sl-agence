@@ -32,6 +32,7 @@ const TABLE_CONFIG: Record<TableName, { pk: string; order: string; asc: boolean 
   notifications: { pk: 'id', order: 'created_at', asc: false },
   sync_log: { pk: 'id', order: 'at', asc: false },
   ignored_refs: { pk: 'id', order: 'created_at', asc: false },
+  prospects: { pk: 'id', order: 'company', asc: true },
 }
 const TABLE_NAMES = Object.keys(TABLE_CONFIG) as TableName[]
 
